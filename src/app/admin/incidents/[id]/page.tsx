@@ -11,8 +11,10 @@ import {
   MapPin, 
   MoreVertical, 
   User, 
-  AlertCircle,
-  Briefcase
+  Briefcase,
+  Flag,
+  Loader2,
+  AlertTriangle
 } from "lucide-react";
 
 // Define Interface
@@ -31,32 +33,69 @@ interface IncidentDetail {
 }
 
 export default function IncidentDetailsPage() {
-  const { id } = useParams(); // Get ID from URL
+  const params = useParams();
+  const id = params?.id as string; 
+
   const [incident, setIncident] = useState<IncidentDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchIncident = async () => {
+      if (!id) return; 
+
       try {
         const res = await fetch(`/api/incidents/${id}`);
-        const data = await res.json();
-        if (res.ok) {
-          setIncident(data.incident);
+        
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || "Failed to load incident");
         }
-      } catch (error) {
-        console.error("Error fetching incident:", error);
+
+        const data = await res.json();
+        if (data.incident) {
+          setIncident(data.incident);
+        } else {
+          throw new Error("Incident data missing");
+        }
+      } catch (err: any) {
+        console.error("Error:", err);
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    if (id) fetchIncident();
+    fetchIncident();
   }, [id]);
 
-  if (loading) return <div className="p-8 text-center">Loading Incident Details...</div>;
-  if (!incident) return <div className="p-8 text-center text-red-500">Incident not found.</div>;
+  // --- Loading State ---
+  if (loading) return (
+    <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="flex flex-col items-center gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <p className="text-gray-500 font-medium">Loading Incident Details...</p>
+      </div>
+    </div>
+  );
 
-  // Helper for colors
+  // --- Error State ---
+  if (error || !incident) return (
+    <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="text-center space-y-4">
+        <div className="inline-flex p-4 bg-red-100 rounded-full">
+          <AlertTriangle className="w-8 h-8 text-red-600" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Incident Not Found</h2>
+        <p className="text-gray-500 max-w-md mx-auto">{error || "The incident you are looking for doesn't exist or has been deleted."}</p>
+        <Link href="/admin/incidents" className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition">
+          Back to Incidents
+        </Link>
+      </div>
+    </div>
+  );
+
+  // --- Render Data ---
   const getPriorityColor = (p: string) => {
     if (p === 'High') return 'text-red-600 bg-red-50 border-red-200';
     if (p === 'Medium') return 'text-yellow-600 bg-yellow-50 border-yellow-200';
@@ -73,7 +112,7 @@ export default function IncidentDetailsPage() {
             <ArrowLeft className="w-4 h-4" /> Back to Incidents
           </Link>
           <span>/</span>
-          <span className="font-medium text-gray-900 dark:text-white">{incident._id}</span>
+          <span className="font-medium text-gray-900 dark:text-white font-mono">{incident._id.slice(-6).toUpperCase()}</span>
         </div>
 
         {/* Header Area */}
@@ -91,8 +130,7 @@ export default function IncidentDetailsPage() {
           </div>
 
           <div className="flex gap-3">
-            {/* Action Buttons */}
-            <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium shadow-sm transition">
+            <button className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 font-medium shadow-sm transition">
               Update Status
             </button>
             <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition flex items-center gap-2">
@@ -111,6 +149,7 @@ export default function IncidentDetailsPage() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 border-b pb-2 dark:border-gray-700">
                 Incident Details
               </h2>
+              
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-4">
                 
                 <div>
@@ -136,6 +175,14 @@ export default function IncidentDetailsPage() {
                 </div>
 
                 <div>
+                  <p className="text-sm text-gray-500 mb-1">Date/Time Reported</p>
+                  <p className="font-medium text-gray-900 dark:text-gray-200 flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    {new Date(incident.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                  </p>
+                </div>
+
+                <div>
                   <p className="text-sm text-gray-500 mb-1">Assigned Technician</p>
                   {incident.assignedTo ? (
                     <p className="font-medium text-gray-900 dark:text-gray-200">
@@ -143,10 +190,18 @@ export default function IncidentDetailsPage() {
                       <span className="block text-xs text-gray-500 font-normal">{incident.assignedTo.email}</span>
                     </p>
                   ) : (
-                    <p className="text-sm text-orange-600 bg-orange-50 px-2 py-1 rounded inline-block">
+                    <p className="text-sm text-orange-600 bg-orange-50 px-2 py-1 rounded inline-block border border-orange-100">
                       Unassigned
                     </p>
                   )}
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Priority</p>
+                  <div className="flex items-center gap-2">
+                    <Flag className={`w-4 h-4 ${incident.priority === 'High' ? 'text-red-500' : incident.priority === 'Medium' ? 'text-yellow-500' : 'text-blue-500'}`} />
+                    <span className="font-medium text-gray-900 dark:text-gray-200">{incident.priority}</span>
+                  </div>
                 </div>
 
               </div>
@@ -167,11 +222,7 @@ export default function IncidentDetailsPage() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {incident.images.map((img, idx) => (
                     <div key={idx} className="aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 relative group">
-                      <img 
-                        src={img} 
-                        alt={`Evidence ${idx + 1}`} 
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={img} alt={`Evidence ${idx + 1}`} className="w-full h-full object-cover" />
                     </div>
                   ))}
                 </div>
@@ -184,31 +235,20 @@ export default function IncidentDetailsPage() {
             <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 sticky top-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Timeline</h2>
               
-              <div className="relative pl-6 border-l border-gray-200 dark:border-gray-700 space-y-8">
+              <div className="relative pl-6 border-l-2 border-gray-100 dark:border-gray-800 space-y-8">
                 
                 {/* Event 1 */}
                 <div className="relative">
-                  <div className="absolute -left-[31px] top-0 h-6 w-6 bg-green-500 rounded-full flex items-center justify-center border-4 border-white dark:border-gray-900">
+                  <div className="absolute -left-[33px] top-0 h-6 w-6 bg-green-500 rounded-full flex items-center justify-center border-4 border-white dark:border-gray-900">
                     <CheckCircle className="w-3 h-3 text-white" />
                   </div>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">Incident Created</p>
                   <p className="text-xs text-gray-500">{new Date(incident.createdAt).toLocaleString()}</p>
                 </div>
 
-                {/* Event 2 (Conditional) */}
-                {incident.assignedTo && (
-                  <div className="relative">
-                    <div className="absolute -left-[31px] top-0 h-6 w-6 bg-blue-500 rounded-full flex items-center justify-center border-4 border-white dark:border-gray-900">
-                      <User className="w-3 h-3 text-white" />
-                    </div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">Technician Assigned</p>
-                    <p className="text-xs text-gray-500">Pending acceptance</p>
-                  </div>
-                )}
-
                 {/* Event 3 */}
                 <div className="relative">
-                   <div className="absolute -left-[31px] top-0 h-6 w-6 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center border-4 border-white dark:border-gray-900">
+                   <div className="absolute -left-[33px] top-0 h-6 w-6 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center border-4 border-white dark:border-gray-900">
                     <MoreVertical className="w-3 h-3 text-white" />
                    </div>
                    <p className="text-sm text-gray-500">Current Status: <span className="font-medium text-gray-700 dark:text-gray-300">{incident.status}</span></p>
