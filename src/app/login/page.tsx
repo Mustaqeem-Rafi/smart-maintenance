@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Loader2, Lock, Mail } from "lucide-react";
+import { AlertCircle, Loader2, Lock, Mail, ArrowRight } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,57 +18,72 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // "credentials" matches the provider ID in your [...nextauth] file
       const res = await signIn("credentials", {
         email: form.email,
         password: form.password,
-        redirect: false, // We handle redirect manually to check roles if needed
+        redirect: false,
       });
 
       if (res?.error) {
-        setError("Invalid email or password. Please try again.");
+        setError("Invalid email or password.");
+        setLoading(false);
       } else {
-        // Success! Redirect to the report page (or dashboard)
-        router.refresh(); // Update session state
-        router.push("/report");
+        const session = await getSession();
+        // Type casting to avoid TS error for custom role
+        const role = (session?.user as any)?.role;
+
+        if (role === "admin") router.push("/admin");
+        else if (role === "technician") router.push("/report");
+        else router.push("/student/dashboard");
+
+        router.refresh();
       }
     } catch (err) {
-      setError("Something went wrong. Please try again.");
-    } finally {
+      setError("Something went wrong.");
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 border border-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-900 via-indigo-800 to-slate-900 p-4 font-sans">
+      {/* Decorative Blobs */}
+      <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+      <div className="absolute bottom-20 right-20 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+
+      <div className="max-w-md w-full bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8 relative z-10">
         
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
-          <p className="text-sm text-gray-500 mt-2">
-            Sign in to report issues or manage tasks.
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-100 text-blue-600 mb-4 shadow-sm">
+            <Lock className="w-6 h-6" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Welcome Back</h1>
+          <p className="text-gray-500 mt-2 text-sm">
+            Enter your credentials to access the Smart Maintenance portal.
           </p>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg flex items-center gap-2 text-sm">
-            <AlertCircle className="w-4 h-4" />
+          <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl flex items-center gap-3 text-sm font-medium animate-in fade-in slide-in-from-top-2">
+            <AlertCircle className="w-5 h-5 shrink-0" />
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          
           {/* Email Field */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-gray-700 ml-1">Email Address</label>
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+              </div>
               <input
                 type="email"
                 required
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
                 placeholder="you@college.edu"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -77,14 +92,21 @@ export default function LoginPage() {
           </div>
 
           {/* Password Field */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between ml-1">
+              <label className="text-sm font-semibold text-gray-700">Password</label>
+              <a href="#" className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline">
+                Forgot password?
+              </a>
+            </div>
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+              </div>
               <input
                 type="password"
                 required
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-gray-50 focus:bg-white"
                 placeholder="••••••••"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
@@ -96,26 +118,31 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-70"
+            className="w-full flex items-center justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02] active:scale-[0.98]"
           >
             {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Signing in...
-              </>
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              "Sign In"
+              <>
+                Sign In <ArrowRight className="ml-2 w-4 h-4" />
+              </>
             )}
           </button>
         </form>
 
         {/* Footer */}
-        <div className="mt-6 text-center text-sm text-gray-500">
-          Don't have an account?{" "}
-          <Link href="/register" className="text-blue-600 hover:underline font-medium">
-            Register as Student
-          </Link>
+        <div className="mt-8 text-center">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{" "}
+            <Link 
+              href="/register" 
+              className="font-bold text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+            >
+              Create Student Account
+            </Link>
+          </p>
         </div>
-        
+
       </div>
     </div>
   );

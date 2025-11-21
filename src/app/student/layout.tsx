@@ -22,7 +22,7 @@ export default function StudentLayout({ children }: { children: ReactNode }) {
         <h1 className="text-2xl font-bold mb-8 p-2 border-b border-blue-600">
           Smart Maintenance
         </h1>
-        <nav className="flex-grow space-y-2">
+        <nav className="grow space-y-2">
           {navItems.map((item) => (
             <Link 
               key={item.href} 
