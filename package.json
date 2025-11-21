@@ -9,12 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
-<<<<<<< Updated upstream
     "@types/leaflet": "^1.9.21",
     "@types/leaflet.heat": "^0.2.5",
-=======
     "@types/mongoose": "^5.11.96",
->>>>>>> Stashed changes
     "bcryptjs": "^3.0.3",
     "leaflet": "^1.9.4",
     "leaflet.heat": "^0.2.0",
