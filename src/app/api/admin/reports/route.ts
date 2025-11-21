@@ -33,8 +33,6 @@ export async function GET() {
     }).reverse();
 
     const trendData = last7Days.map((day) => {
-      // Count incidents created on this specific day name
-      // (Note: In a real app, match specific dates, not just names)
       const count = incidents.filter((i) => 
         new Date(i.createdAt).toLocaleDateString("en-US", { weekday: "short" }) === day
       ).length;

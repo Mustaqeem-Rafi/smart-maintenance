@@ -17,7 +17,6 @@ const DefaultIcon = L.icon({
   shadowSize: [41, 41]
 });
 
-// A Red Icon for "Dropped Pins"
 const RedIcon = L.icon({
   iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
@@ -59,11 +58,10 @@ function RecenterMap({ coords }: { coords: [number, number] | null }) {
 
   useEffect(() => {
     if (coords) {
-      map.flyTo(coords, 16, { duration: 1.5 }); // Smooth animation
+      map.flyTo(coords, 17, { duration: 1.5 }); // Closer zoom for search results
     }
   }, [coords, map]);
 
-  // Show a marker at the search result
   return coords ? (
     <Marker position={coords}>
       <Popup>Search Result</Popup>
@@ -84,11 +82,17 @@ function HeatmapLayer({ points }: { points: [number, number, number][] }) {
 
     // @ts-ignore
     const layer = L.heatLayer(points, {
-      radius: 30,
-      blur: 20,
-      maxZoom: 15,
+      radius: 25, // Adjusted for campus scale
+      blur: 15,
+      maxZoom: 17,
       max: 1.0,
-      gradient: { 0.2: 'blue', 0.4: 'cyan', 0.6: 'lime', 0.8: 'yellow', 1.0: 'red' }
+      // Custom Gradient: Green -> Yellow -> Orange -> Red
+      gradient: { 
+        0.2: 'green',
+        0.5: 'yellow',
+        0.7: 'orange',
+        1.0: 'red' 
+      }
     });
 
     layer.addTo(map);
@@ -103,26 +107,27 @@ function HeatmapLayer({ points }: { points: [number, number, number][] }) {
 }
 
 export default function HeatmapView({ incidents, viewMode, searchCoords }: HeatmapViewProps) {
-  // Default: Bengaluru
-  const defaultCenter: [number, number] = [12.9716, 77.5946];
+  // --- UPDATE: BMSIT Campus Coordinates ---
+  // This centers the map directly on the college
+  const bmsitCenter: [number, number] = [13.1335, 77.5688];
 
   const heatmapPoints: [number, number, number][] = incidents
     .filter((i) => i.location?.coordinates)
     .map((i) => [
-      i.location.coordinates[1], 
-      i.location.coordinates[0], 
-      i.priority === "High" ? 3 : 1, 
+      i.location.coordinates[1], // Lat
+      i.location.coordinates[0], // Lng
+      i.priority === "High" ? 2 : 1, // Weight
     ]);
 
   return (
     <div className="h-full w-full rounded-xl overflow-hidden shadow-lg border border-gray-200 dark:border-gray-800 z-0 relative">
       <MapContainer 
-        center={defaultCenter} 
-        zoom={12} 
+        center={bmsitCenter} 
+        zoom={17} // Higher zoom level to show just the campus
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={true}
       >
-        {/* Use CartoDB Voyager for a cleaner, Google-Maps-like look */}
+        {/* Google Maps Style Tile Layer (CartoDB Voyager) */}
         <TileLayer
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
@@ -134,15 +139,19 @@ export default function HeatmapView({ incidents, viewMode, searchCoords }: Heatm
           coords={searchCoords || null} 
         />
 
-        {/* 2. Handle User Clicks (Drop Pin) */}
+        {/* 2. Handle User Clicks */}
         <ClickHandler />
 
         {/* 3. Show Heatmap Layer */}
         {viewMode === "heatmap" && <HeatmapLayer points={heatmapPoints} />}
 
         {/* 4. Show Incident Pins */}
-        {viewMode === "pins" && incidents.map((incident) => {
+        {(viewMode === "pins" || viewMode === "heatmap") && incidents.map((incident) => {
            if (!incident.location?.coordinates) return null;
+           
+           // Optional: Hide pins in heatmap mode to avoid clutter
+           if (viewMode === "heatmap") return null;
+
            return (
              <Marker 
                key={incident._id} 

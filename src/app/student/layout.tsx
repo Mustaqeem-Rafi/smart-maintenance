@@ -1,27 +1,34 @@
-import Link from 'next/link';
-import { Home, User, AlertCircle, Clock, LogOut } from 'lucide-react';
-import { ReactNode } from 'react';
+"use client";
 
-// Define the navigation links
-const navItems = [
-  { href: '/student/dashboard', icon: Home, label: 'Dashboard' },
-  { href: '/student/profile', icon: User, label: 'Profile' },
-  { href: '/report', icon: AlertCircle, label: 'File Incident' },
-  { href: '/student/history', icon: Clock, label: 'My History' },
-];
+import Link from "next/link";
+import { 
+  LayoutDashboard, 
+  FileText, 
+  User, 
+  LogOut, 
+  PlusCircle 
+} from "lucide-react";
+import { signOut } from "next-auth/react";
 
-export default function StudentLayout({ children }: { children: ReactNode }) {
-  // In a real application, you would check the user session here (e.g., using Auth.js)
-  // If the user is not logged in, you would redirect them to /login.
+export default function StudentLayout({ children }: { children: React.ReactNode }) {
+  
+  const navItems = [
+    { label: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
+    { label: "Report Issue", href: "/report", icon: PlusCircle },
+    { label: "History", href: "/student/history", icon: FileText },
+    { label: "Profile", href: "/student/profile", icon: User },
+  ];
 
   return (
     <div className="flex min-h-screen bg-gray-100">
       
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-blue-800 text-white flex flex-col p-4 shadow-xl">
-        <h1 className="text-2xl font-bold mb-8 p-2 border-b border-blue-600">
-          Smart Maintenance
-        </h1>
+      <aside className="w-64 bg-blue-800 text-white flex flex-col p-4 shadow-xl fixed h-full">
+        <div className="p-2 border-b border-blue-600 mb-8">
+          <h1 className="text-2xl font-bold">Smart Maint.</h1>
+          <p className="text-blue-200 text-xs">Student Portal</p>
+        </div>
+        
         <nav className="grow space-y-2">
           {navItems.map((item) => (
             <Link 
@@ -35,19 +42,18 @@ export default function StudentLayout({ children }: { children: ReactNode }) {
           ))}
         </nav>
         
-        {/* Logout Placeholder */}
+        {/* Logout Button */}
         <button 
-          className="flex items-center gap-3 p-3 rounded-lg text-sm font-medium text-red-300 hover:bg-blue-700 transition duration-150 mt-auto"
-          // In the future, this button will log the user out
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="flex items-center gap-3 p-3 rounded-lg text-sm font-medium text-red-200 hover:bg-blue-700 hover:text-white transition duration-150 mt-auto"
         >
           <LogOut className="w-5 h-5" />
           Logout
         </button>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        {/* Render the dashboard/page.tsx or any other child page here */}
+      {/* Main Content Wrapper (Added margin-left to account for fixed sidebar) */}
+      <main className="flex-1 ml-64 p-8 overflow-y-auto">
         {children} 
       </main>
     </div>

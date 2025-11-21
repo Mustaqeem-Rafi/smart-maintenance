@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTheme } from "next-themes"; // <--- Import this
 import { 
   User, 
   Bell, 
@@ -11,14 +12,25 @@ import {
   Sun, 
   Smartphone, 
   Mail,
-  Shield
+  Shield,
+  Loader2,
+  Laptop
 } from "lucide-react";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
+  
+  // --- Theme Hook ---
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
-  // Mock State (In a real app, fetch this from DB)
+  // Ensure component is mounted to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Mock Form State
   const [formData, setFormData] = useState({
     name: "Admin User",
     email: "admin@college.edu",
@@ -27,20 +39,21 @@ export default function SettingsPage() {
       push: false,
       weeklyReport: true,
       criticalAlerts: true
-    },
-    theme: "light"
+    }
   });
 
   const handleSave = async () => {
     setLoading(true);
-    // Simulate API Call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulating API
     setLoading(false);
     alert("Settings saved successfully!");
   };
 
+  // Prevent rendering theme buttons until client-side load is complete
+  if (!mounted) return null;
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans p-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans p-8 transition-colors duration-200">
       <div className="max-w-5xl mx-auto">
         
         {/* Header */}
@@ -51,7 +64,7 @@ export default function SettingsPage() {
 
         <div className="flex flex-col lg:flex-row gap-8">
           
-          {/* Sidebar Navigation (Settings Menu) */}
+          {/* Sidebar Navigation */}
           <aside className="w-full lg:w-64 flex-shrink-0 space-y-2">
             {[
               { id: "general", label: "General", icon: User },
@@ -162,37 +175,65 @@ export default function SettingsPage() {
                 <div className="max-w-md space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Current Password</label>
-                    <input type="password" className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-transparent" />
+                    <input type="password" className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-transparent dark:text-white" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New Password</label>
-                    <input type="password" className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-transparent" />
+                    <input type="password" className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-transparent dark:text-white" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm New Password</label>
-                    <input type="password" className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-transparent" />
+                    <input type="password" className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-transparent dark:text-white" />
                   </div>
                 </div>
               </div>
             )}
 
-            {/* SYSTEM TAB */}
+            {/* SYSTEM TAB (Theme Controls) */}
             {activeTab === "system" && (
               <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Appearance</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <button className="p-4 border-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex flex-col items-center gap-2">
-                    <Sun className="w-6 h-6 text-blue-600" />
-                    <span className="font-medium text-blue-700 dark:text-blue-300">Light</span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  
+                  {/* Light Button */}
+                  <button 
+                    onClick={() => setTheme("light")}
+                    className={`p-4 border-2 rounded-xl flex flex-col items-center gap-2 transition-all ${
+                      theme === "light" 
+                        ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400" 
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-500"
+                    }`}
+                  >
+                    <Sun className="w-6 h-6" />
+                    <span className="font-medium">Light</span>
                   </button>
-                  <button className="p-4 border border-gray-200 dark:border-gray-700 hover:border-gray-300 rounded-xl flex flex-col items-center gap-2 text-gray-500">
+
+                  {/* Dark Button */}
+                  <button 
+                    onClick={() => setTheme("dark")}
+                    className={`p-4 border-2 rounded-xl flex flex-col items-center gap-2 transition-all ${
+                      theme === "dark" 
+                        ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400" 
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-500"
+                    }`}
+                  >
                     <Moon className="w-6 h-6" />
                     <span className="font-medium">Dark</span>
                   </button>
-                  <button className="p-4 border border-gray-200 dark:border-gray-700 hover:border-gray-300 rounded-xl flex flex-col items-center gap-2 text-gray-500">
-                    <Globe className="w-6 h-6" />
+
+                  {/* System Button */}
+                  <button 
+                    onClick={() => setTheme("system")}
+                    className={`p-4 border-2 rounded-xl flex flex-col items-center gap-2 transition-all ${
+                      theme === "system" 
+                        ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400" 
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-500"
+                    }`}
+                  >
+                    <Laptop className="w-6 h-6" />
                     <span className="font-medium">System</span>
                   </button>
+
                 </div>
               </div>
             )}
@@ -205,7 +246,7 @@ export default function SettingsPage() {
                 className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-all disabled:opacity-70"
               >
                 {loading ? (
-                  <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+                  <Loader2 className="animate-spin w-4 h-4" />
                 ) : (
                   <Save className="w-4 h-4" />
                 )}

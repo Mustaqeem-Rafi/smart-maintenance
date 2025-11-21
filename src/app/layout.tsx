@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css";
-import Providers from "@/src/components/Providers"; // <--- 1. Import this
+import "./globals.css"; 
+import Providers from "@/src/components/Providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -16,9 +16,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    /* CRITICAL FIX: 'suppressHydrationWarning' MUST be added here.
+      It tells Next.js to ignore the mismatch caused by the Theme Provider.
+    */
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        {/* 2. Wrap children with Providers */}
         <Providers>
           {children}
         </Providers>
