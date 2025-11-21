@@ -1,7 +1,17 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, AlertCircle, FileBarChart, Settings, LogOut, Users, HelpCircle, Map } from "lucide-react";
+import { 
+  LayoutDashboard, 
+  AlertCircle, 
+  FileBarChart, 
+  Settings, 
+  LogOut, 
+  Users, 
+  HelpCircle, 
+  Map, 
+  User // Added User import here
+} from "lucide-react";
 import { signOut } from "next-auth/react";
 
 export default function AdminSidebar() {
@@ -11,7 +21,7 @@ export default function AdminSidebar() {
     { name: "Dashboard", icon: LayoutDashboard, href: "/admin" },
     { name: "Incidents", icon: AlertCircle, href: "/admin/incidents" },
     { name: "Technicians", icon: Users, href: "/admin/technicians" },
-    { name: "Heatmap", icon: Map, href: "/admin/heatmap" }, // New Heatmap Link
+    { name: "Heatmap", icon: Map, href: "/admin/heatmap" },
     { name: "Reports", icon: FileBarChart, href: "/admin/reports" },
     { name: "Settings", icon: Settings, href: "/admin/settings" },
   ];
@@ -41,23 +51,23 @@ export default function AdminSidebar() {
     <aside className="flex w-64 flex-col border-r border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 fixed left-0 top-0 h-screen z-50 font-sans">
       <div className="flex h-full flex-col justify-between p-4">
         <div className="flex flex-col gap-6">
-          {/* User Profile Area */}
-          <div className="flex items-center gap-3 px-2">
-            <div className="h-10 w-10 rounded-full bg-gray-300 overflow-hidden">
-              {/* Placeholder for user image */}
-              <svg className="h-full w-full text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
+          
+          {/* User Profile Area - NOW CLICKABLE */}
+          <Link href="/admin/profile" className="group">
+            <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+              <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center border-2 border-transparent group-hover:border-blue-500 transition-all">
+                <User className="h-6 w-6 text-blue-600 dark:text-blue-300" />
+              </div>
+              <div className="flex flex-col">
+                <h1 className="text-gray-900 dark:text-white text-sm font-semibold leading-normal group-hover:text-blue-600 transition-colors">
+                  Admin User
+                </h1>
+                <p className="text-gray-500 dark:text-gray-400 text-xs font-normal leading-normal">
+                  View Profile
+                </p>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <h1 className="text-gray-900 dark:text-white text-sm font-semibold leading-normal">
-                Admin User
-              </h1>
-              <p className="text-gray-500 dark:text-gray-400 text-xs font-normal leading-normal">
-                College Incident Mgmt.
-              </p>
-            </div>
-          </div>
+          </Link>
 
           {/* Top Navigation */}
           <nav className="flex flex-col gap-1">

@@ -12,15 +12,15 @@ export interface IIncident extends Document {
     address?: string;
   };
   images: string[];
-  reportedBy: mongoose.Types.ObjectId; // Link to Student
-  assignedTo?: mongoose.Types.ObjectId; // Link to Technician
+  reportedBy: mongoose.Types.ObjectId; // Reference to User
+  assignedTo?: mongoose.Types.ObjectId; // Reference to Technician
   createdAt: Date;
   resolvedAt?: Date;
 }
 
 const IncidentSchema: Schema<IIncident> = new Schema({
   title: { type: String, required: true },
-  description: { type: String, required: true }, // Mandatory description [cite: 38]
+  description: { type: String, required: true },
   category: { 
     type: String, 
     enum: ['Water', 'Electricity', 'Internet', 'Civil', 'Other'],
@@ -38,17 +38,17 @@ const IncidentSchema: Schema<IIncident> = new Schema({
   },
   location: {
     type: { type: String, default: 'Point', enum: ['Point'] },
-    coordinates: { type: [Number], required: true }, // [long, lat] - Critical for Heatmap
+    coordinates: { type: [Number], required: true }, // [long, lat]
     address: String
   },
-  images: [String], 
+  images: [String],
   reportedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   assignedTo: { type: Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now },
   resolvedAt: Date
 });
 
-// 2dsphere index allows us to find "nearby" incidents efficiently
+// Geospatial Index for Heatmap/Duplicate Detection
 IncidentSchema.index({ location: '2dsphere' });
 
 const Incident: Model<IIncident> = mongoose.models.Incident || mongoose.model<IIncident>('Incident', IncidentSchema);

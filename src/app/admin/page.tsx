@@ -2,16 +2,18 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, PlusCircle, X } from "lucide-react";
-import dynamic from 'next/dynamic'; // <--- 1. Import dynamic
+import { AlertTriangle, ArrowRight, PlusCircle, X, Loader2 } from "lucide-react";
+import dynamic from 'next/dynamic'; 
 
-// 2. Load Heatmap dynamically with SSR disabled
+// 1. FIX: Correct Import Path & Dynamic Loading
 const HeatmapView = dynamic(() => import("@/src/components/HeatmapView"), { 
   ssr: false, 
-  loading: () => <div className="h-96 w-full bg-gray-100 rounded-xl animate-pulse" />
+  loading: () => (
+    <div className="h-96 w-full bg-gray-100 rounded-xl flex items-center justify-center text-gray-400">
+      <Loader2 className="w-8 h-8 animate-spin" />
+    </div>
+  )
 });
-
-// ... rest of your code (interface Incident, export default function...)
 
 interface Incident {
   _id: string;
@@ -37,6 +39,7 @@ export default function AdminDashboard() {
         if (data.incidents) {
           setIncidents(data.incidents);
           
+          // Calculate Stats
           const open = data.incidents.filter((i: Incident) => i.status === 'Open').length;
           const high = data.incidents.filter((i: Incident) => i.priority === 'High' && i.status !== 'Resolved').length;
           const resolved = data.incidents.filter((i: Incident) => i.status === 'Resolved').length;
@@ -110,7 +113,6 @@ export default function AdminDashboard() {
 
         {/* 3. Stats Grid */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {/* ... (Stats cards remain the same as before) ... */}
           <div className="flex flex-col gap-2 rounded-xl p-6 border border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 shadow-sm">
             <p className="text-gray-500 dark:text-gray-400 text-base font-medium">Open Incidents</p>
             <p className="text-gray-900 dark:text-white text-3xl font-bold">{stats.open}</p>
@@ -129,9 +131,10 @@ export default function AdminDashboard() {
         </div>
 
         {/* 4. Campus Heatmap */}
-        <div>
+        <div className="h-96 w-full">
             <h3 className="text-gray-900 dark:text-white text-lg font-semibold mb-4">Campus Incident Heatmap</h3>
-            <HeatmapView incidents={incidents} />
+            {/* FIX: Added viewMode="heatmap" prop here */}
+            <HeatmapView incidents={incidents} viewMode="heatmap" />
         </div>
 
         {/* 5. Recent Incidents Table */}
