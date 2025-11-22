@@ -1,4 +1,5 @@
 "use client";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
@@ -10,9 +11,10 @@ import {
   Users, 
   HelpCircle, 
   Map, 
-  User // Added User import here
+  User 
 } from "lucide-react";
-import { signOut } from "next-auth/react";
+// 1. Import signOut from NextAuth
+import { signOut } from "next-auth/react"; 
 
 export default function AdminSidebar() {
   const pathname = usePathname();
@@ -52,7 +54,7 @@ export default function AdminSidebar() {
       <div className="flex h-full flex-col justify-between p-4">
         <div className="flex flex-col gap-6">
           
-          {/* User Profile Area - NOW CLICKABLE */}
+          {/* User Profile Area */}
           <Link href="/admin/profile" className="group">
             <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer">
               <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center border-2 border-transparent group-hover:border-blue-500 transition-all">
@@ -82,8 +84,10 @@ export default function AdminSidebar() {
           {bottomMenuItems.map((item) => (
               <SidebarItem key={item.href} item={item} />
           ))}
+          
+          {/* 2. Logout Button with Redirect Logic */}
           <button
-            onClick={() => signOut()}
+            onClick={() => signOut({ callbackUrl: '/login' })} 
             className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
           >
             <LogOut className="w-5 h-5 text-gray-500 dark:text-gray-400" />

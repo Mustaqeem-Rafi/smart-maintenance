@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, useMap, Marker, Popup, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, useMap, Marker, Popup, useMapEvents, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.heat";
@@ -41,7 +41,7 @@ function ClickHandler() {
   useMapEvents({
     click(e) {
       setClickedPos([e.latlng.lat, e.latlng.lng]);
-      console.log(`📍 Pinned Location: ${e.latlng.lat}, ${e.latlng.lng}`);
+      console.log(`📍 Pinned: ${e.latlng.lat}, ${e.latlng.lng}`);
     },
   });
 
@@ -52,13 +52,18 @@ function ClickHandler() {
   ) : null;
 }
 
-// --- 3. Component to Move Map & Show Search Pin ---
+// --- 3. Component to Move Map ---
 function RecenterMap({ coords }: { coords: [number, number] | null }) {
   const map = useMap();
 
   useEffect(() => {
     if (coords) {
-      map.flyTo(coords, 17, { duration: 1.5 }); // Closer zoom for search results
+      // Use try-catch to prevent crashes if map is unmounting
+      try {
+        map.setView(coords, 18, { animate: true, duration: 1.5 });
+      } catch (e) {
+        console.warn("Map movement interrupted", e);
+      }
     }
   }, [coords, map]);
 
@@ -76,30 +81,31 @@ function HeatmapLayer({ points }: { points: [number, number, number][] }) {
   useEffect(() => {
     if (!map || points.length === 0) return;
 
+    // Cleanup previous layer safely
     if (heatLayerRef.current) {
-      map.removeLayer(heatLayerRef.current);
+      try {
+        map.removeLayer(heatLayerRef.current);
+      } catch (e) {}
     }
 
-    // @ts-ignore
+    // @ts-ignore - leaflet.heat types are loose
     const layer = L.heatLayer(points, {
-      radius: 25, // Adjusted for campus scale
+      radius: 25,
       blur: 15,
       maxZoom: 17,
       max: 1.0,
-      // Custom Gradient: Green -> Yellow -> Orange -> Red
-      gradient: { 
-        0.2: 'green',
-        0.5: 'yellow',
-        0.7: 'orange',
-        1.0: 'red' 
-      }
+      gradient: { 0.2: 'green', 0.5: 'yellow', 0.8: 'orange', 1.0: 'red' }
     });
 
     layer.addTo(map);
     heatLayerRef.current = layer;
 
     return () => {
-      if (heatLayerRef.current) map.removeLayer(heatLayerRef.current);
+      if (heatLayerRef.current) {
+        try {
+          map.removeLayer(heatLayerRef.current);
+        } catch (e) {}
+      }
     };
   }, [map, points]);
 
@@ -107,63 +113,68 @@ function HeatmapLayer({ points }: { points: [number, number, number][] }) {
 }
 
 export default function HeatmapView({ incidents, viewMode, searchCoords }: HeatmapViewProps) {
-  // --- UPDATE: BMSIT Campus Coordinates ---
-  // This centers the map directly on the college
+  // Center on BMSIT Campus
   const bmsitCenter: [number, number] = [13.1335, 77.5688];
+  const [mapKey, setMapKey] = useState(`map-${Date.now()}`); // Unique key to force re-render
 
+  // Transform data
   const heatmapPoints: [number, number, number][] = incidents
     .filter((i) => i.location?.coordinates)
     .map((i) => [
-      i.location.coordinates[1], // Lat
-      i.location.coordinates[0], // Lng
-      i.priority === "High" ? 2 : 1, // Weight
+      i.location.coordinates[1], 
+      i.location.coordinates[0], 
+      i.priority === "High" ? 2 : 1, 
     ]);
 
   return (
     <div className="h-full w-full rounded-xl overflow-hidden shadow-lg border border-gray-200 dark:border-gray-800 z-0 relative">
+      {/* Key prop forces React to destroy old map instance on unmount/remount */}
       <MapContainer 
+        key={mapKey} 
         center={bmsitCenter} 
-        zoom={17} // Higher zoom level to show just the campus
+        zoom={17} 
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={true}
       >
-        {/* Google Maps Style Tile Layer (CartoDB Voyager) */}
+        {/* Standard OpenStreetMap for detailed campus labels */}
         <TileLayer
-          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
-        {/* 1. Handle Search Movement */}
         <RecenterMap 
-          key={searchCoords ? `${searchCoords[0]}-${searchCoords[1]}` : "init"} 
           coords={searchCoords || null} 
         />
 
-        {/* 2. Handle User Clicks */}
         <ClickHandler />
 
-        {/* 3. Show Heatmap Layer */}
+        {/* Show Heatmap Layer */}
         {viewMode === "heatmap" && <HeatmapLayer points={heatmapPoints} />}
 
-        {/* 4. Show Incident Pins */}
-        {(viewMode === "pins" || viewMode === "heatmap") && incidents.map((incident) => {
+        {/* Show Pins */}
+        {incidents.map((incident) => {
            if (!incident.location?.coordinates) return null;
            
-           // Optional: Hide pins in heatmap mode to avoid clutter
-           if (viewMode === "heatmap") return null;
-
            return (
              <Marker 
                key={incident._id} 
                position={[incident.location.coordinates[1], incident.location.coordinates[0]]}
+               opacity={viewMode === "heatmap" ? 0 : 1} 
              >
+               <Tooltip 
+                 direction="top" 
+                 offset={[0, -20]} 
+                 opacity={1} 
+                 permanent={viewMode === "pins"} 
+                 className="text-xs font-bold bg-white border border-gray-300 px-2 py-1 rounded shadow-sm"
+               >
+                 {incident.location.address || incident.title}
+               </Tooltip>
+
                <Popup>
                  <div className="text-sm font-sans">
                    <strong className="block text-base">{incident.title}</strong>
-                   <span className="text-gray-500 text-xs uppercase tracking-wide">{incident.category}</span>
-                   <div className={`mt-1 inline-block px-2 py-0.5 rounded text-xs font-bold text-white ${incident.status === 'Open' ? 'bg-red-500' : 'bg-green-500'}`}>
-                     {incident.status}
-                   </div>
+                   <span className="text-gray-500 text-xs">{incident.category}</span>
                  </div>
                </Popup>
              </Marker>
