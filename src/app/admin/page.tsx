@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, PlusCircle, X, Loader2 } from "lucide-react";
 import dynamic from 'next/dynamic'; 
+import NotificationBell from "@/src/components/NotificationBell"; // <--- 1. ADD IMPORT HERE
 
-// 1. FIX: Correct Import Path & Dynamic Loading
+// Fix: Correct Import Path & Dynamic Loading
 const HeatmapView = dynamic(() => import("@/src/components/HeatmapView"), { 
   ssr: false, 
   loading: () => (
@@ -55,6 +56,7 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
+  // ... (Keep existing helper functions getStatusColor, getPriorityColor) ...
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Open": return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
@@ -76,7 +78,7 @@ export default function AdminDashboard() {
   return (
     <div className="flex flex-col gap-8 font-sans">
         
-        {/* 1. Prediction Alert Banner */}
+        {/* 1. Prediction Alert Banner (Keep this as is) */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-700 p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="text-yellow-600 dark:text-yellow-500 h-6 w-6 mt-0.5" />
@@ -99,25 +101,32 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 2. Page Heading */}
+        {/* 2. Page Heading (PASTE YOUR CODE HERE) */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-gray-900 dark:text-white text-3xl font-bold">Dashboard</h1>
-          <Link 
-            href="/report" 
-            className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition"
-          >
-            <PlusCircle className="w-5 h-5" />
-            <span>Create New Incident</span>
-          </Link>
+          
+          <div className="flex items-center gap-3">
+            {/* NOTIFICATION BELL ADDED HERE */}
+            <NotificationBell />
+            
+            <Link 
+              href="/report" 
+              className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition"
+            >
+              <PlusCircle className="w-5 h-5" />
+              <span>Create New Incident</span>
+            </Link>
+          </div>
         </div>
 
-        {/* 3. Stats Grid */}
+        {/* 3. Stats Grid (Keep as is) */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="flex flex-col gap-2 rounded-xl p-6 border border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 shadow-sm">
             <p className="text-gray-500 dark:text-gray-400 text-base font-medium">Open Incidents</p>
             <p className="text-gray-900 dark:text-white text-3xl font-bold">{stats.open}</p>
             <p className="text-red-600 text-sm font-medium">Requires attention</p>
           </div>
+          {/* ... (Rest of stats) ... */}
           <div className="flex flex-col gap-2 rounded-xl p-6 border border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 shadow-sm">
             <p className="text-gray-500 dark:text-gray-400 text-base font-medium">High Priority Alerts</p>
             <p className="text-gray-900 dark:text-white text-3xl font-bold">{stats.highPriority}</p>
@@ -130,15 +139,15 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 4. Campus Heatmap */}
+        {/* 4. Campus Heatmap (Keep as is) */}
         <div className="h-96 w-full">
             <h3 className="text-gray-900 dark:text-white text-lg font-semibold mb-4">Campus Incident Heatmap</h3>
-            {/* FIX: Added viewMode="heatmap" prop here */}
             <HeatmapView incidents={incidents} viewMode="heatmap" />
         </div>
 
-        {/* 5. Recent Incidents Table */}
+        {/* 5. Recent Incidents Table (Keep as is) */}
         <div className="rounded-xl border border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 overflow-hidden shadow-sm">
+          {/* ... (Table code) ... */}
           <div className="p-6 border-b border-gray-100 dark:border-gray-800">
             <h3 className="text-gray-900 dark:text-white text-lg font-semibold">Recent Incidents</h3>
           </div>

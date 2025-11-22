@@ -1,10 +1,13 @@
 "use client";
+
 import { useState } from 'react';
+import { useRouter } from 'next/navigation'; // 1. Import useRouter
 import { MapPin, Loader2, Camera, AlertTriangle } from 'lucide-react';
 
 export default function ReportIncident() {
+  const router = useRouter(); // 2. Initialize router
   const [loading, setLoading] = useState(false);
-  const [locationStatus, setLocationStatus] = useState('idle'); // idle, finding, success, error
+  const [locationStatus, setLocationStatus] = useState('idle'); 
   
   const [formData, setFormData] = useState({
     title: '',
@@ -12,7 +15,7 @@ export default function ReportIncident() {
     category: 'Water',
     latitude: 0,
     longitude: 0,
-    imageUrl: '' // Keeping it simple for MVP (URL input)
+    imageUrl: '' 
   });
 
   const getLocation = () => {
@@ -39,7 +42,6 @@ export default function ReportIncident() {
     setLoading(true);
 
     try {
-      // Format data for MongoDB GeoJSON
       const payload = {
         title: formData.title,
         description: formData.description,
@@ -47,7 +49,7 @@ export default function ReportIncident() {
         images: formData.imageUrl ? [formData.imageUrl] : [],
         location: {
           type: "Point",
-          coordinates: [formData.longitude, formData.latitude] // Mongo expects [Long, Lat]
+          coordinates: [formData.longitude, formData.latitude] 
         }
       };
 
@@ -58,10 +60,20 @@ export default function ReportIncident() {
       });
 
       if (res.ok) {
-        alert('Incident Reported Successfully!');
-        // Reset form
-        setFormData({ ...formData, title: '', description: '' });
-        setLocationStatus('idle');
+        const data = await res.json(); // 3. Get response data
+        
+        // 4. Construct Success URL Params
+        const params = new URLSearchParams({
+          refId: data.incident._id,
+          type: formData.category,
+          location: formData.latitude !== 0 
+            ? `GPS: ${formData.latitude.toFixed(4)}, ${formData.longitude.toFixed(4)}` 
+            : "Location not shared"
+        });
+
+        // 5. Redirect instead of Alert
+        router.push(`/staff/report/success?${params.toString()}`);
+        
       } else {
         const err = await res.json();
         alert('Error: ' + err.error);
@@ -74,7 +86,7 @@ export default function ReportIncident() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 flex justify-center items-center">
+    <div className="min-h-screen bg-gray-50 p-6 flex justify-center items-center font-sans">
       <div className="w-full max-w-lg bg-white rounded-xl shadow-lg p-8 border border-gray-100">
         
         <div className="mb-8 text-center">
@@ -150,7 +162,7 @@ export default function ReportIncident() {
             />
           </div>
 
-           {/* Image URL (Simplified for MVP) */}
+           {/* Image URL */}
            <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Image URL (Optional)</label>
             <div className="relative">

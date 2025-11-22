@@ -32,10 +32,15 @@ export default function LoginPage() {
         // Type casting to avoid TS error for custom role
         const role = (session?.user as any)?.role;
 
-        if (role === "admin") router.push("/admin");
-        else if (role === "technician") router.push("/report");
-        else router.push("/student/dashboard");
-
+        // --- REDIRECT LOGIC UPDATED HERE ---
+        if (role === "admin") {
+          router.push("/admin");
+        } else if (role === "technician") {
+          router.push("/staff/dashboard"); // Redirects to the new Staff Dashboard
+        } else {
+          router.push("/student/dashboard");
+        }
+        
         router.refresh();
       }
     } catch (err) {
@@ -45,7 +50,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-900 via-indigo-800 to-slate-900 p-4 font-sans">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-indigo-800 to-slate-900 p-4 font-sans">
       {/* Decorative Blobs */}
       <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
       <div className="absolute bottom-20 right-20 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
