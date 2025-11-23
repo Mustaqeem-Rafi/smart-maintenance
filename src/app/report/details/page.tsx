@@ -1,24 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import dynamic from "next/dynamic"; 
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { 
-  ArrowLeft, MapPin, Camera, AlignLeft, Type, ChevronRight, Loader2 
+  ArrowLeft, MapPin, Camera, AlignLeft, Type, ChevronRight, Loader2, AlertCircle
 } from "lucide-react";
 
-// Dynamic Import for Map to avoid SSR issues
-const LocationPreviewMap = dynamic(() => import("@/src/components/LocationPreviewMap"), {
-  ssr: false,
-  loading: () => <div className="h-48 w-full bg-gray-100 animate-pulse rounded-xl mt-3" />
-});
+// Force dynamic rendering to prevent build errors with searchParams
+export const dynamic = "force-dynamic";
 
-export default function ReportDetailsPage() {
-  const router = useRouter();
+function DetailsContent() {
   const searchParams = useSearchParams();
   const category = searchParams.get("category");
 
   const [gettingLoc, setGettingLoc] = useState(false);
+  const [errors, setErrors] = useState({ title: false, description: false });
+  
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -29,9 +26,14 @@ export default function ReportDetailsPage() {
   });
 
   useEffect(() => {
-    const saved = sessionStorage.getItem("incidentFormData");
-    if (saved) {
-      setFormData(JSON.parse(saved));
+    try {
+      const saved = sessionStorage.getItem("incidentFormData");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setFormData(prev => ({ ...prev, ...parsed }));
+      }
+    } catch (e) {
+      console.error("Failed to load draft", e);
     }
   }, []);
 
@@ -53,141 +55,147 @@ export default function ReportDetailsPage() {
         setGettingLoc(false);
       },
       () => {
-        alert("Unable to retrieve your location");
+        alert("Unable to retrieve your location.");
         setGettingLoc(false);
       }
     );
   };
 
   const handleNext = () => {
-    if (!formData.title || !formData.description) {
-      alert("Please fill in the required fields");
-      return;
+    const newErrors = {
+        title: !formData.title || !formData.title.trim(),
+        description: !formData.description || !formData.description.trim()
+    };
+    setErrors(newErrors);
+
+    if (newErrors.title || newErrors.description) {
+      return; 
     }
-    sessionStorage.setItem("incidentFormData", JSON.stringify({ ...formData, category }));
-    router.push("/report/review");
+
+    const dataToSave = { ...formData, category };
+    sessionStorage.setItem("incidentFormData", JSON.stringify(dataToSave));
+    
+    window.location.href = "/report/review";
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 flex justify-center font-sans">
-      <div className="max-w-3xl w-full">
+    <div className="mx-auto max-w-3xl w-full">
+      <div className="flex flex-wrap gap-2 mb-8 text-sm font-medium">
+        <span className="text-gray-500 dark:text-gray-400">Category</span>
+        <span className="text-gray-300 dark:text-gray-600">/</span>
+        <span className="text-blue-600 dark:text-blue-400">Details</span>
+        <span className="text-gray-300 dark:text-gray-600">/</span>
+        <span className="text-gray-500 dark:text-gray-400">Review</span>
+      </div>
+
+      <div className="mb-8">
+        <h1 className="text-3xl font-black tracking-tight mb-2 text-gray-900 dark:text-white">Incident Details</h1>
+        <p className="text-gray-500 dark:text-gray-400">Please provide specific details about the {category || "issue"}.</p>
+      </div>
+
+      <div className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
         
-        {/* Breadcrumbs */}
-        <div className="flex flex-wrap gap-2 mb-8 text-sm font-medium">
-          <span className="text-gray-500">Select Category</span>
-          <span className="text-gray-400">/</span>
-          <span className="text-blue-700 font-bold">Details</span>
-          <span className="text-gray-400">/</span>
-          <span className="text-gray-500">Review</span>
-        </div>
-
-        {/* Header - Fixed text color */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-black tracking-tight text-gray-900 mb-2">
-            Incident Details
-          </h1>
-          <p className="text-gray-600 text-lg">
-            Please provide specific details about the {category || "issue"}.
-          </p>
-        </div>
-
-        <div className="space-y-6 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-          
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2">Issue Title</label>
-            <div className="relative">
-              <Type className="absolute left-3 top-3 text-gray-500 w-5 h-5" />
-              <input 
-                type="text"
-                placeholder="e.g., Broken Projector in Lab 1"
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition"
-                value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
-              />
-            </div>
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2">Description</label>
-            <div className="relative">
-              <AlignLeft className="absolute left-3 top-3 text-gray-500 w-5 h-5" />
-              <textarea 
-                rows={4}
-                placeholder="Describe the issue in detail..."
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition resize-none"
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-              />
-            </div>
-          </div>
-
-          {/* Location with Map */}
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2">Location</label>
-            <div className="flex gap-2 mb-2">
-              <button 
-                onClick={handleGetLocation}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 text-sm font-bold rounded-lg hover:bg-blue-100 transition border border-blue-100"
-              >
-                {gettingLoc ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-                Auto-Detect GPS
-              </button>
-            </div>
+        <div>
+          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+            Issue Title <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <Type className="absolute left-3 top-3 text-gray-400 dark:text-gray-500 w-5 h-5" />
             <input 
               type="text"
-              placeholder="Enter building, floor, or room number..."
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition"
-              value={formData.locationName}
-              onChange={(e) => setFormData({...formData, locationName: e.target.value})}
+              placeholder="e.g., Leaking Pipe in Lab 3"
+              className={`w-full pl-10 pr-4 py-3 rounded-xl border ${errors.title ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-700'} bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition`}
+              value={formData.title}
+              onChange={(e) => setFormData({...formData, title: e.target.value})}
             />
-            
-            {/* MAP INTEGRATION */}
-            {formData.latitude !== 0 && (
-              <>
-                <p className="text-xs text-green-700 mt-2 font-mono font-bold">
-                  📍 Location Locked: {formData.latitude.toFixed(5)}, {formData.longitude.toFixed(5)}
-                </p>
-                <LocationPreviewMap lat={formData.latitude} lng={formData.longitude} />
-              </>
-            )}
           </div>
-
-          {/* Image URL */}
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2">Photo Evidence (Optional)</label>
-            <div className="relative">
-              <Camera className="absolute left-3 top-3 text-gray-500 w-5 h-5" />
-              <input 
-                type="text"
-                placeholder="Paste image URL..."
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
-              />
-            </div>
-          </div>
-
+          {errors.title && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> Title is required</p>}
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl text-gray-700 font-bold hover:bg-white hover:shadow-sm transition"
-          >
-            <ArrowLeft className="w-5 h-5" /> Back
-          </button>
-          <button
-            onClick={handleNext}
-            className="flex items-center gap-2 px-8 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition"
-          >
-            Review Report <ChevronRight className="w-5 h-5" />
-          </button>
+        <div>
+          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+            Description <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <AlignLeft className="absolute left-3 top-3 text-gray-400 dark:text-gray-500 w-5 h-5" />
+            <textarea 
+              rows={4}
+              placeholder="Describe the issue in detail..."
+              className={`w-full pl-10 pr-4 py-3 rounded-xl border ${errors.description ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-700'} bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition resize-none`}
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+            />
+          </div>
+          {errors.description && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> Description is required</p>}
         </div>
 
+        <div>
+          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Location</label>
+          <div className="flex gap-2 mb-2">
+            <button 
+              onClick={handleGetLocation}
+              type="button"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-bold rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition"
+            >
+              {gettingLoc ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+              {formData.latitude !== 0 ? "Update GPS" : "Auto-Detect GPS"}
+            </button>
+          </div>
+          <input 
+            type="text"
+            placeholder="Enter building, floor, or room number..."
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-500 focus:border-transparent outline-none transition"
+            value={formData.locationName}
+            onChange={(e) => setFormData({...formData, locationName: e.target.value})}
+          />
+          {formData.latitude !== 0 && (
+            <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-mono">
+              GPS Locked: {formData.latitude.toFixed(5)}, {formData.longitude.toFixed(5)}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Photo Evidence (Optional)</label>
+          <div className="relative">
+            <Camera className="absolute left-3 top-3 text-gray-400 dark:text-gray-500 w-5 h-5" />
+            <input 
+              type="text"
+              placeholder="Paste image URL..."
+              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-500 focus:border-transparent outline-none transition"
+              value={formData.imageUrl}
+              onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
+            />
+          </div>
+        </div>
       </div>
+
+      <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-100 dark:border-gray-800">
+        <button
+          type="button"
+          onClick={() => window.history.back()}
+          className="flex items-center gap-2 px-6 py-3 rounded-xl text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+        >
+          <ArrowLeft className="w-5 h-5" /> Back
+        </button>
+        <button
+          type="button"
+          onClick={handleNext}
+          className="flex items-center gap-2 px-8 py-3 rounded-xl bg-blue-600 dark:bg-blue-500 text-white font-bold hover:bg-blue-700 dark:hover:bg-blue-600 shadow-lg shadow-blue-200 dark:shadow-blue-900/30 transition"
+        >
+          Review Report <ChevronRight className="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function ReportDetailsPage() {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 font-sans flex flex-col justify-center">
+      <Suspense fallback={<div className="flex justify-center"><Loader2 className="w-8 h-8 animate-spin"/></div>}>
+        <DetailsContent />
+      </Suspense>
     </div>
   );
 }
