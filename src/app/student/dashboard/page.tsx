@@ -3,85 +3,65 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, CheckCircle, Plus, Clock, Wrench, Loader2, AlertCircle } from 'lucide-react';
-
-// Define the interface for your real data
-interface Incident {
-  _id: string;
-  title: string;
-  category: string;
-  status: string;
-  createdAt: string;
-}
+import { FileText, CheckCircle, Plus, Clock, Wrench, Loader2 } from 'lucide-react';
+import UserNotificationBell from "@/src/components/UserNotificationBell"; // <--- Imported Bell
 
 export default function StudentDashboard() {
-  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [complaints, setComplaints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ active: 0, resolved: 0, total: 0 });
 
-  // FETCH REAL DATA
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchData = async () => {
       try {
         const res = await fetch("/api/incidents/my-reports");
         const data = await res.json();
         
         if (data.incidents) {
-          const fetchedIncidents = data.incidents;
-          setIncidents(fetchedIncidents);
-
-          // Calculate Stats dynamically
-          const resolved = fetchedIncidents.filter((i: Incident) => i.status === 'Resolved').length;
-          const active = fetchedIncidents.filter((i: Incident) => i.status !== 'Resolved').length;
-          setStats({
-            total: fetchedIncidents.length,
-            resolved,
-            active
-          });
+          const items = data.incidents;
+          setComplaints(items);
+          
+          const active = items.filter((i: any) => i.status !== 'Resolved').length;
+          const resolved = items.filter((i: any) => i.status === 'Resolved').length;
+          setStats({ active, resolved, total: items.length });
         }
       } catch (error) {
-        console.error("Failed to load dashboard data");
+        console.error("Failed to fetch dashboard data");
       } finally {
         setLoading(false);
       }
     };
-
-    fetchDashboardData();
+    fetchData();
   }, []);
-
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="p-8 bg-slate-50 min-h-screen w-full font-sans">
       
-      {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4"
-      >
+      {/* Header Section with Bell */}
+      <div className="mb-10 flex justify-between items-end">
         <div>
           <h1 className="text-4xl font-extrabold text-slate-800 tracking-tight">Dashboard</h1>
           <p className="text-slate-500 mt-2 text-lg">Track your maintenance requests in real-time.</p>
         </div>
         
-        <Link href="/report">
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="bg-blue-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-blue-500/30 font-bold hover:bg-blue-700 transition"
-          >
-            <Plus size={20} />
-            Report New Issue
-          </motion.button>
-        </Link>
-      </motion.div>
+        <div className="flex items-center gap-4">
+          {/* NOTIFICATION BELL ADDED HERE */}
+          <div className="bg-white p-2 rounded-full shadow-sm border border-slate-200">
+            <UserNotificationBell />
+          </div>
+
+          <Link href="/report">
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-blue-500/30 font-medium"
+            >
+              <Plus size={20} />
+              Report New Issue
+            </motion.button>
+          </Link>
+        </div>
+      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
@@ -91,20 +71,18 @@ export default function StudentDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Activity Section */}
+        {/* Main Section: History */}
         <div className="lg:col-span-2 space-y-6">
           <h2 className="text-2xl font-bold text-slate-800 mb-4">Recent Activity</h2>
           
-          {incidents.length === 0 ? (
-            <div className="bg-white p-10 rounded-2xl border border-dashed border-slate-300 text-center">
-              <AlertCircle className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-500 font-medium">No complaints found.</p>
-              <Link href="/report" className="text-blue-600 font-bold text-sm mt-2 inline-block hover:underline">
-                Create your first report
-              </Link>
+          {loading ? (
+            <div className="flex justify-center py-10"><Loader2 className="animate-spin text-blue-600" /></div>
+          ) : complaints.length === 0 ? (
+            <div className="p-10 text-center bg-white rounded-2xl border border-dashed border-gray-300 text-gray-500">
+              No incidents reported yet.
             </div>
           ) : (
-            incidents.slice(0, 5).map((complaint, index) => (
+            complaints.map((complaint, index) => (
               <ComplaintCard key={complaint._id} data={complaint} index={index} />
             ))
           )}
@@ -117,14 +95,14 @@ export default function StudentDashboard() {
           transition={{ delay: 0.4 }}
           className="space-y-6"
         >
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-2xl shadow-lg text-white">
-            <h3 className="text-lg font-bold mb-2">Need Help?</h3>
-            <p className="text-blue-100 text-sm mb-4">
-              If your issue is urgent (e.g., Fire, Gas Leak), please contact emergency services immediately.
-            </p>
-            <button className="w-full bg-white/20 hover:bg-white/30 text-white font-bold py-2 rounded-lg text-sm transition">
-              Emergency Contacts
-            </button>
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+            <div className="flex flex-col items-center text-center">
+              <div className="h-20 w-20 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold text-2xl mb-4">
+                ME
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">My Profile</h3>
+              <Link href="/student/profile" className="text-sm text-blue-600 hover:underline mt-2">View Full Profile</Link>
+            </div>
           </div>
         </motion.div>
       </div>
@@ -153,7 +131,14 @@ function StatCard({ title, value, icon, delay }: any) {
   );
 }
 
-function ComplaintCard({ data, index }: { data: Incident, index: number }) {
+function ComplaintCard({ data, index }: any) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Determine step based on status
+  let currentStep = 1; 
+  if (data.status === "In Progress") currentStep = 2;
+  if (data.status === "Resolved") currentStep = 3;
+
   const isResolved = data.status === "Resolved";
   const statusColor = isResolved 
     ? "text-green-700 bg-green-50 border-green-200" 
@@ -168,31 +153,59 @@ function ComplaintCard({ data, index }: { data: Incident, index: number }) {
       transition={{ delay: index * 0.1 }}
       className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
     >
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-4">
-          <div className={`p-3 rounded-xl ${isResolved ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
-            {isResolved ? <CheckCircle size={20} /> : <Wrench size={20} />}
-          </div>
-          <div>
-            <h4 className="text-lg font-bold text-slate-800">{data.title}</h4>
-            <div className="flex items-center gap-2 text-sm text-slate-500 mt-0.5">
-              <span className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                #{data._id.slice(-6).toUpperCase()}
-              </span>
-              <span>•</span>
-              <span>{data.category}</span>
+      <div className="p-6 cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
+        <div className="flex justify-between items-start">
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-xl ${isResolved ? 'bg-green-100' : 'bg-amber-100'}`}>
+              {isResolved ? <CheckCircle className="text-green-600" size={24} /> : <Wrench className="text-amber-600" size={24} />}
+            </div>
+            <div>
+              <h4 className="text-lg font-bold text-slate-800">{data.title}</h4>
+              <p className="text-sm text-slate-500">#{data._id.slice(-6).toUpperCase()} • {data.category}</p>
             </div>
           </div>
-        </div>
-        <div className="text-right">
-             <span className={`px-3 py-1 rounded-full text-xs font-bold border ${statusColor} inline-block mb-1`}>
+          <div className="flex flex-col items-end gap-2">
+             <span className={`px-3 py-1 rounded-full text-xs font-bold border ${statusColor} flex items-center gap-2`}>
                 {data.status}
              </span>
-             <p className="text-xs text-slate-400 font-medium">
-               {new Date(data.createdAt).toLocaleDateString()}
-             </p>
+             <span className="text-xs text-slate-400">{new Date(data.createdAt).toLocaleDateString()}</span>
+          </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-slate-50 border-t border-slate-100"
+          >
+            <div className="p-6">
+              <h5 className="text-sm font-bold text-slate-700 mb-6 uppercase tracking-wide">Live Status</h5>
+              <div className="relative flex items-center justify-between w-full px-4">
+                <div className="absolute top-4 left-0 w-full h-1 bg-gray-200 -z-0 rounded-full"></div>
+                <div 
+                    className={`absolute top-4 left-0 h-1 -z-0 rounded-full transition-all duration-1000 ease-out ${isResolved ? 'bg-green-500' : 'bg-blue-500'}`}
+                    style={{ width: `${((currentStep - 1) / 2) * 100}%` }}
+                ></div>
+                {["Reported", "In Progress", "Resolved"].map((label, i) => {
+                  const stepNum = i + 1;
+                  const isCompleted = stepNum <= currentStep;
+                  return (
+                    <div key={i} className="relative z-10 flex flex-col items-center">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center border-4 transition-all ${isCompleted ? (isResolved ? 'bg-green-500 border-green-500' : 'bg-blue-500 border-blue-500') : 'bg-white border-gray-300'}`}>
+                        {isCompleted && <CheckCircle size={14} className="text-white" />}
+                      </div>
+                      <p className={`text-xs font-bold mt-2 ${stepNum === currentStep ? 'text-slate-800' : 'text-slate-400'}`}>{label}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

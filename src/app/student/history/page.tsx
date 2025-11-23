@@ -1,36 +1,36 @@
 import React from 'react';
 import { getServerSession } from 'next-auth';
-import { redirect } from 'next/navigation';
 import dbConnect from '@/src/lib/db';
 import Incident from '@/src/models/Incident';
 import User from '@/src/models/User';
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
-import ClientHistoryList from './ClientHistoryList';
+import ClientHistoryList from './ClientHistoryList'; 
 
 export const dynamic = 'force-dynamic';
 
-export default async function StudentHistoryPage() {
+async function getStudentIncidents() {
   await dbConnect();
-
-  // 1. Auth Check
+  
   const session = await getServerSession(authOptions);
-  if (!session || !session.user?.email) {
-    redirect('/login');
-  }
+  if (!session?.user?.email) return [];
 
-  // 2. Get User ID
   const user = await User.findOne({ email: session.user.email });
-  if (!user) {
-    redirect('/login');
-  }
+  if (!user) return [];
 
-  // 3. Fetch Incidents (Replacing old 'Complaint' logic)
-  const incidentsRaw = await Incident.find({ reportedBy: user._id })
-    .sort({ createdAt: -1 })
-    .lean();
+  const incidents = await Incident.find({ reportedBy: user._id })
+                                  .sort({ createdAt: -1 })
+                                  .lean();
+  
+  // Transform data to match what ClientHistoryList expects
+  // (Mapping 'createdAt' to 'dateSubmitted' to avoid changing the client component)
+  return JSON.parse(JSON.stringify(incidents)).map((inc: any) => ({
+    ...inc,
+    dateSubmitted: inc.createdAt // Map for compatibility
+  }));
+}
 
-  // Serialize for Client Component
-  const incidents = JSON.parse(JSON.stringify(incidentsRaw));
+export default async function StudentHistoryPage() {
+  const complaints = await getStudentIncidents();
 
   return (
     <div className="min-h-screen bg-slate-50 p-8 font-sans">
@@ -42,8 +42,7 @@ export default async function StudentHistoryPage() {
           </p>
         </div>
         
-        {/* Pass real data to Client Component */}
-        <ClientHistoryList complaints={incidents} />
+        <ClientHistoryList complaints={complaints} />
       </div>
     </div>
   );

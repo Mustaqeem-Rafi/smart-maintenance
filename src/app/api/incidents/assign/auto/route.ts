@@ -62,15 +62,41 @@ export async function POST(req: Request) {
     incident.status = "In Progress";
     await incident.save();
 
-    // --- CREATE NOTIFICATION ---
-    await Notification.create({
+    // --- UPDATED NOTIFICATION LOGIC ---
+    const notifications = [];
+    const admins = await User.find({ role: 'admin' });
+
+    // A. Notify Reporter ONLY
+    notifications.push({
       userId: incident.reportedBy, 
       incidentId: incident._id,
       title: "Technician Assigned",
-      message: `Auto-assign successful. ${bestTech.name} is now handling your report: "${incident.title}".`,
+      message: `Technician ${bestTech.name} has been auto-assigned to your report.`,
       type: 'assigned'
     });
-    // ---------------------------
+
+    // B. Notify Technician ONLY
+    notifications.push({
+      userId: bestTech._id, 
+      incidentId: incident._id,
+      title: "New Auto-Assignment",
+      message: `System assigned you to: "${incident.title}".`,
+      type: 'info'
+    });
+
+    // C. Notify Admins
+    admins.forEach(admin => {
+      notifications.push({
+        userId: admin._id,
+        incidentId: incident._id,
+        title: "Auto-Assignment",
+        message: `System assigned ${bestTech.name} to ticket #${incident._id.toString().slice(-6).toUpperCase()}.`,
+        type: 'info'
+      });
+    });
+
+    await Notification.insertMany(notifications);
+    // ----------------------------------
 
     return NextResponse.json({ 
       success: true, 

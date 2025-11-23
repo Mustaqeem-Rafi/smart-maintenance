@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, Check, Info, CheckCircle, Wrench } from "lucide-react";
+import { Bell, CheckCircle, Info, Wrench } from "lucide-react";
 
 interface Notification {
   _id: string;
@@ -32,7 +32,7 @@ export default function UserNotificationBell() {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 10000); // Poll every 10s
+    const interval = setInterval(fetchNotifications, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -58,14 +58,14 @@ export default function UserNotificationBell() {
       >
         <Bell className="w-6 h-6" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full">
+          <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white">
             {unreadCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
+        <div className="absolute right-0 mt-3 w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in-95 origin-top-right">
           <div className="p-3 border-b bg-gray-50 flex justify-between items-center">
             <span className="font-bold text-gray-700 text-sm">Notifications</span>
             <button onClick={() => setIsOpen(false)} className="text-xs text-gray-500 hover:text-gray-800">Close</button>

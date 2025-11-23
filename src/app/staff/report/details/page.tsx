@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic"; // <--- 1. Import Dynamic
 import { 
   ArrowLeft, 
   MapPin, 
@@ -11,6 +12,12 @@ import {
   ChevronRight,
   Loader2
 } from "lucide-react";
+
+// --- 2. Load Map Dynamically (No SSR) ---
+const LocationPreviewMap = dynamic(() => import("@/src/components/LocationPreviewMap"), {
+  ssr: false,
+  loading: () => <div className="h-48 w-full bg-gray-100 animate-pulse rounded-xl mt-3" />
+});
 
 export default function ReportDetailsPage() {
   const router = useRouter();
@@ -28,7 +35,6 @@ export default function ReportDetailsPage() {
     imageUrl: ""
   });
 
-  // Load existing data if going back
   useEffect(() => {
     const saved = sessionStorage.getItem("incidentFormData");
     if (saved) {
@@ -65,8 +71,6 @@ export default function ReportDetailsPage() {
       alert("Please fill in the required fields");
       return;
     }
-    
-    // Save to session storage to pass to Review page
     sessionStorage.setItem("incidentFormData", JSON.stringify({ ...formData, category }));
     router.push("/staff/report/review");
   };
@@ -74,7 +78,6 @@ export default function ReportDetailsPage() {
   return (
     <div className="mx-auto max-w-3xl p-6 font-sans text-gray-900">
       
-      {/* Breadcrumbs */}
       <div className="flex flex-wrap gap-2 mb-8 text-sm font-medium">
         <span className="text-gray-500">Select Category</span>
         <span className="text-gray-300">/</span>
@@ -90,7 +93,6 @@ export default function ReportDetailsPage() {
 
       <div className="space-y-6 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
         
-        {/* Title */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">Issue Title</label>
           <div className="relative">
@@ -105,7 +107,6 @@ export default function ReportDetailsPage() {
           </div>
         </div>
 
-        {/* Description */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">Description</label>
           <div className="relative">
@@ -120,7 +121,6 @@ export default function ReportDetailsPage() {
           </div>
         </div>
 
-        {/* Location */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">Location</label>
           <div className="flex gap-2 mb-2">
@@ -140,14 +140,20 @@ export default function ReportDetailsPage() {
             value={formData.locationName}
             onChange={(e) => setFormData({...formData, locationName: e.target.value})}
           />
+          
+          {/* --- 3. Display Map if Location Locked --- */}
           {formData.latitude !== 0 && (
-            <p className="text-xs text-green-600 mt-1 font-mono">
-              GPS Locked: {formData.latitude.toFixed(5)}, {formData.longitude.toFixed(5)}
-            </p>
+            <>
+              <p className="text-xs text-green-600 mt-2 font-mono font-medium">
+                📍 GPS Locked: {formData.latitude.toFixed(5)}, {formData.longitude.toFixed(5)}
+              </p>
+              <LocationPreviewMap lat={formData.latitude} lng={formData.longitude} />
+            </>
           )}
+          {/* --------------------------------------- */}
+
         </div>
 
-        {/* Image URL (Simplified for MVP) */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">Photo Evidence (Optional)</label>
           <div className="relative">
@@ -160,12 +166,10 @@ export default function ReportDetailsPage() {
               onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
             />
           </div>
-          <p className="text-xs text-gray-400 mt-1">Note: For this demo, please paste a direct image link.</p>
         </div>
 
       </div>
 
-      {/* Actions */}
       <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-100">
         <button
           onClick={() => router.back()}
