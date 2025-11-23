@@ -1,25 +1,36 @@
 import React from 'react';
+import { getServerSession } from 'next-auth';
+import { redirect } from 'next/navigation';
 import dbConnect from '@/src/lib/db';
-import Complaint, { IComplaint } from '@/src/models/Complaint';
-import ClientHistoryList from './ClientHistoryList'; // import from same directory (create ClientHistoryList.tsx if missing)
+import Incident from '@/src/models/Incident';
+import User from '@/src/models/User';
+import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
+import ClientHistoryList from './ClientHistoryList';
 
-// Ensure data is fetched on every request
 export const dynamic = 'force-dynamic';
 
-async function getStudentComplaints(studentId: string) {
-  await dbConnect();
-  
-  const complaints = await Complaint.find({ studentId: studentId })
-                                    .sort({ dateSubmitted: -1 })
-                                    .lean();
-  
-  // Serialize the data (convert MongoDB objects to simple JSON)
-  return JSON.parse(JSON.stringify(complaints));
-}
-
 export default async function StudentHistoryPage() {
-  const DUMMY_STUDENT_ID = 'student_001';
-  const complaints = await getStudentComplaints(DUMMY_STUDENT_ID);
+  await dbConnect();
+
+  // 1. Auth Check
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user?.email) {
+    redirect('/login');
+  }
+
+  // 2. Get User ID
+  const user = await User.findOne({ email: session.user.email });
+  if (!user) {
+    redirect('/login');
+  }
+
+  // 3. Fetch Incidents (Replacing old 'Complaint' logic)
+  const incidentsRaw = await Incident.find({ reportedBy: user._id })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  // Serialize for Client Component
+  const incidents = JSON.parse(JSON.stringify(incidentsRaw));
 
   return (
     <div className="min-h-screen bg-slate-50 p-8 font-sans">
@@ -31,8 +42,8 @@ export default async function StudentHistoryPage() {
           </p>
         </div>
         
-        {/* Pass the data to the Client Component for the fancy UI */}
-        <ClientHistoryList complaints={complaints} />
+        {/* Pass real data to Client Component */}
+        <ClientHistoryList complaints={incidents} />
       </div>
     </div>
   );

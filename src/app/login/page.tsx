@@ -32,29 +32,17 @@ export default function LoginPage() {
         // Type casting to avoid TS error for custom role
         const role = (session?.user as any)?.role;
 
-<<<<<<< Updated upstream
-        // --- REDIRECT LOGIC UPDATED HERE ---
-        if (role === "admin") {
-          router.push("/admin");
-        } else if (role === "technician") {
-          router.push("/staff/dashboard"); // Redirects to the new Staff Dashboard
-        } else {
-          router.push("/student/dashboard");
-        }
-        
-=======
         // --- CORRECT REDIRECTION LOGIC ---
         if (role === "admin") {
             router.push("/admin");
         } else if (role === "technician") {
-            // Redirect to the Technician Dashboard we created
+            // Redirect to the Technician Dashboard
             router.push("/technician/dashboard"); 
         } else {
             // Default for students
             router.push("/student/dashboard");
         }
 
->>>>>>> Stashed changes
         router.refresh();
       }
     } catch (err) {
