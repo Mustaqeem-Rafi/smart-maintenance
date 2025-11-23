@@ -2,11 +2,20 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, PlusCircle, X, Loader2 } from "lucide-react";
+import { 
+  AlertTriangle, 
+  ArrowRight, 
+  PlusCircle, 
+  X, 
+  Loader2, 
+  BrainCircuit, 
+  RefreshCw,
+  TrendingUp,
+  AlertOctagon
+} from "lucide-react";
 import dynamic from 'next/dynamic'; 
-import NotificationBell from "@/src/components/NotificationBell"; // <--- 1. ADD IMPORT HERE
+import NotificationBell from "@/src/components/NotificationBell";
 
-// Fix: Correct Import Path & Dynamic Loading
 const HeatmapView = dynamic(() => import("@/src/components/HeatmapView"), { 
   ssr: false, 
   loading: () => (
@@ -26,37 +35,70 @@ interface Incident {
   createdAt: string;
 }
 
+interface Prediction {
+  _id: string;
+  title: string;
+  message: string;
+  severity: 'Critical' | 'High' | 'Medium' | 'Low';
+  confidenceScore: number;
+  algorithm: string;
+  location: string;
+  predictedDate?: string;
+}
+
 export default function AdminDashboard() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [runningAI, setRunningAI] = useState(false);
   const [stats, setStats] = useState({ open: 0, highPriority: 0, resolved: 0 });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch("/api/admin/incidents");
-        const data = await res.json();
+  const fetchData = async () => {
+    try {
+      // 1. Fetch Incidents
+      const res = await fetch("/api/admin/incidents");
+      const data = await res.json();
+      
+      if (data.incidents) {
+        setIncidents(data.incidents);
         
-        if (data.incidents) {
-          setIncidents(data.incidents);
-          
-          // Calculate Stats
-          const open = data.incidents.filter((i: Incident) => i.status === 'Open').length;
-          const high = data.incidents.filter((i: Incident) => i.priority === 'High' && i.status !== 'Resolved').length;
-          const resolved = data.incidents.filter((i: Incident) => i.status === 'Resolved').length;
-          
-          setStats({ open, highPriority: high, resolved });
-        }
-      } catch (error) {
-        console.error("Failed to fetch data", error);
-      } finally {
-        setLoading(false);
+        const open = data.incidents.filter((i: Incident) => i.status === 'Open').length;
+        const high = data.incidents.filter((i: Incident) => i.priority === 'High' && i.status !== 'Resolved').length;
+        const resolved = data.incidents.filter((i: Incident) => i.status === 'Resolved').length;
+        
+        setStats({ open, highPriority: high, resolved });
       }
-    };
+
+      // 2. Fetch Existing Predictions (Don't run logic yet, just fetch)
+      // Note: You might need a simple GET endpoint for predictions or just use the run endpoint if it returns existing on GET
+      // For now, we assume we only see them after running the analysis.
+    } catch (error) {
+      console.error("Failed to fetch data", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
 
-  // ... (Keep existing helper functions getStatusColor, getPriorityColor) ...
+  const runAIDiagnostics = async () => {
+    setRunningAI(true);
+    try {
+      const res = await fetch("/api/predictions/run", { method: "POST" });
+      const data = await res.json();
+      if (data.success && data.predictions) {
+        setPredictions(data.predictions);
+      }
+    } catch (error) {
+      alert("AI Engine Failed: " + error);
+    } finally {
+      setRunningAI(false);
+    }
+  };
+
+  // Helpers
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Open": return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
@@ -75,38 +117,23 @@ export default function AdminDashboard() {
     }
   };
 
+  const getPredictionStyles = (severity: string) => {
+    switch (severity) {
+      case 'Critical': return "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-100";
+      case 'High': return "border-orange-500 bg-orange-50 dark:bg-orange-900/20 text-orange-900 dark:text-orange-100";
+      case 'Medium': return "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-100";
+      default: return "border-gray-200 bg-gray-50 text-gray-900";
+    }
+  };
+
   return (
     <div className="flex flex-col gap-8 font-sans">
         
-        {/* 1. Prediction Alert Banner (Keep this as is) */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-lg border border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-700 p-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="text-yellow-600 dark:text-yellow-500 h-6 w-6 mt-0.5" />
-            <div className="flex flex-col gap-1">
-              <p className="text-yellow-900 dark:text-yellow-200 text-base font-bold leading-tight">
-                Prediction Alert: High risk of plumbing failure in Hostel B.
-              </p>
-              <p className="text-yellow-800 dark:text-yellow-300 text-sm font-normal">
-                Our prediction engine has detected a pattern of 3 minor leaks in the last 24h.
-              </p>
-            </div>
-          </div>
-          <div className="flex w-full sm:w-auto items-center gap-4">
-            <button className="text-sm font-bold flex items-center gap-2 text-yellow-900 dark:text-yellow-100 hover:underline">
-              View Details <ArrowRight className="w-4 h-4" />
-            </button>
-            <button className="text-yellow-600 hover:text-yellow-800">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* 2. Page Heading (PASTE YOUR CODE HERE) */}
+        {/* 1. Header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-gray-900 dark:text-white text-3xl font-bold">Dashboard</h1>
           
           <div className="flex items-center gap-3">
-            {/* NOTIFICATION BELL ADDED HERE */}
             <NotificationBell />
             
             <Link 
@@ -119,14 +146,61 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 3. Stats Grid (Keep as is) */}
+        {/* 2. AI PREDICTION ENGINE SECTION */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <BrainCircuit className="w-5 h-5 text-purple-600" /> 
+              Predictive Maintenance Engine
+            </h2>
+            <button 
+              onClick={runAIDiagnostics}
+              disabled={runningAI}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg shadow-md shadow-purple-200 transition disabled:opacity-50"
+            >
+              {runningAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              {runningAI ? "Analyzing Patterns..." : "Run Diagnostics"}
+            </button>
+          </div>
+
+          {/* Results Grid */}
+          {predictions.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-4">
+              {predictions.map((pred, idx) => (
+                <div key={idx} className={`p-5 rounded-xl border-l-4 shadow-sm ${getPredictionStyles(pred.severity)}`}>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-xs font-bold uppercase tracking-wider opacity-70">{pred.algorithm}</span>
+                    <span className="text-xs font-bold bg-white/50 px-2 py-1 rounded">{pred.confidenceScore}% Conf.</span>
+                  </div>
+                  <h3 className="font-bold text-lg leading-tight mb-2 flex items-center gap-2">
+                    {pred.severity === 'Critical' && <AlertOctagon className="w-5 h-5" />}
+                    {pred.title}
+                  </h3>
+                  <p className="text-sm opacity-90 leading-relaxed mb-3">{pred.message}</p>
+                  <div className="flex items-center gap-2 text-xs font-medium opacity-75">
+                    <TrendingUp className="w-3 h-3" />
+                    {pred.location}
+                    {pred.predictedDate && <span>• Expected: {new Date(pred.predictedDate).toLocaleDateString()}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            // Empty State / Placeholder
+            <div className="p-8 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 bg-gray-50/50">
+              <BrainCircuit className="w-10 h-10 mb-2 opacity-20" />
+              <p className="text-sm">Run diagnostics to detect failure patterns, wear-out risks, and anomalies.</p>
+            </div>
+          )}
+        </div>
+
+        {/* 3. Stats Grid */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="flex flex-col gap-2 rounded-xl p-6 border border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 shadow-sm">
             <p className="text-gray-500 dark:text-gray-400 text-base font-medium">Open Incidents</p>
             <p className="text-gray-900 dark:text-white text-3xl font-bold">{stats.open}</p>
             <p className="text-red-600 text-sm font-medium">Requires attention</p>
           </div>
-          {/* ... (Rest of stats) ... */}
           <div className="flex flex-col gap-2 rounded-xl p-6 border border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 shadow-sm">
             <p className="text-gray-500 dark:text-gray-400 text-base font-medium">High Priority Alerts</p>
             <p className="text-gray-900 dark:text-white text-3xl font-bold">{stats.highPriority}</p>
@@ -139,15 +213,14 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 4. Campus Heatmap (Keep as is) */}
+        {/* 4. Campus Heatmap */}
         <div className="h-96 w-full">
             <h3 className="text-gray-900 dark:text-white text-lg font-semibold mb-4">Campus Incident Heatmap</h3>
             <HeatmapView incidents={incidents} viewMode="heatmap" />
         </div>
 
-        {/* 5. Recent Incidents Table (Keep as is) */}
+        {/* 5. Recent Incidents Table */}
         <div className="rounded-xl border border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 overflow-hidden shadow-sm">
-          {/* ... (Table code) ... */}
           <div className="p-6 border-b border-gray-100 dark:border-gray-800">
             <h3 className="text-gray-900 dark:text-white text-lg font-semibold">Recent Incidents</h3>
           </div>
@@ -168,7 +241,7 @@ export default function AdminDashboard() {
                 ) : incidents.length === 0 ? (
                   <tr><td colSpan={5} className="px-6 py-8 text-center">No incidents found.</td></tr>
                 ) : (
-                  incidents.map((incident) => (
+                  incidents.slice(0, 5).map((incident) => (
                     <tr key={incident._id} className="bg-white dark:bg-gray-900 border-b dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
                       <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
                         {incident.title}

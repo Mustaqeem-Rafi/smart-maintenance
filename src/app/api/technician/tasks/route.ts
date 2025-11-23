@@ -2,41 +2,39 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/src/lib/db';
 import Incident from '@/src/models/Incident';
 import User from '@/src/models/User';
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/src/app/api/auth/[...nextauth]/route";
 
 export async function GET(req: Request) {
   try {
     await connectDB();
 
-    // Get the email from the URL query parameter (e.g., ?email=suresh@college.edu)
-    const { searchParams } = new URL(req.url);
-    const queryEmail = searchParams.get('email');
-
-    // --- IDENTIFY THE TECHNICIAN ---
-    
-    // 1. Use the email from the URL if provided
-    // 2. Fallback to "ramesh@college.edu" (Default Demo User)
-    const targetEmail = queryEmail || "ramesh@college.edu";
-    
-    console.log(`🔍 searching for technician: ${targetEmail}`);
-
-    let technician = await User.findOne({ email: targetEmail });
-
-    // 3. Fallback: If that user doesn't exist, just grab the first technician found
-    if (!technician) {
-        console.log(`⚠️ User ${targetEmail} not found. Picking first available technician...`);
-        technician = await User.findOne({ role: 'technician' });
+    // 1. Securely identify the user from the session
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const email = session.user.email;
+    console.log(`🔍 Fetching tasks for logged-in user: ${email}`);
+
+    // 2. Find the Technician Profile
+    const technician = await User.findOne({ email });
+
     if (!technician) {
-        return NextResponse.json({ error: "No technician account found in database." }, { status: 404 });
+        return NextResponse.json({ error: "User profile not found." }, { status: 404 });
     }
 
-    console.log(`✅ Fetching tasks for: ${technician.name} (${technician.department})`);
+    // 3. Role Check (Security Layer)
+    // Optional: Allow admins to peek, but strictly lock down others
+    if (technician.role !== 'technician' && technician.role !== 'admin') {
+        return NextResponse.json({ error: "Access Denied. Technician role required." }, { status: 403 });
+    }
 
-    // --- FETCH TASKS ---
+    // 4. Fetch Assigned Tasks
     const tasks = await Incident.find({ 
         assignedTo: technician._id,
-        status: { $ne: 'Resolved' } 
+        status: { $ne: 'Resolved' } // Show active tasks (Open/In Progress)
     }).sort({ createdAt: -1 });
 
     return NextResponse.json({ tasks });

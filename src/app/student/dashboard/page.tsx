@@ -54,7 +54,7 @@ export default function StudentDashboard() {
             <motion.button 
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-blue-500/30 font-medium"
+              className="bg-linear-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-blue-500/30 font-medium"
             >
               <Plus size={20} />
               Report New Issue
@@ -184,9 +184,9 @@ function ComplaintCard({ data, index }: any) {
             <div className="p-6">
               <h5 className="text-sm font-bold text-slate-700 mb-6 uppercase tracking-wide">Live Status</h5>
               <div className="relative flex items-center justify-between w-full px-4">
-                <div className="absolute top-4 left-0 w-full h-1 bg-gray-200 -z-0 rounded-full"></div>
+                <div className="absolute top-4 left-0 w-full h-1 bg-gray-200 z-0 rounded-full"></div>
                 <div 
-                    className={`absolute top-4 left-0 h-1 -z-0 rounded-full transition-all duration-1000 ease-out ${isResolved ? 'bg-green-500' : 'bg-blue-500'}`}
+                    className={`absolute top-4 left-0 h-1 z-0 rounded-full transition-all duration-1000 ease-out ${isResolved ? 'bg-green-500' : 'bg-blue-500'}`}
                     style={{ width: `${((currentStep - 1) / 2) * 100}%` }}
                 ></div>
                 {["Reported", "In Progress", "Resolved"].map((label, i) => {

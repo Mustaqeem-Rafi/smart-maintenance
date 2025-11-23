@@ -3,15 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { 
-  MapPin, 
-  Clock, 
-  CheckCircle, 
-  Play, 
-  AlertCircle, 
-  Loader2, 
-  Bell,
-  User,
-  RefreshCw
+  MapPin, Clock, CheckCircle, Play, AlertCircle, Loader2, Bell, User
 } from 'lucide-react';
 
 interface Task {
@@ -33,32 +25,21 @@ const isSlaBreached = (dateString: string) => {
 };
 
 export default function TechnicianDashboard() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // STATE: Who are we viewing? 
-  // Defaults to session email, or falls back to Ramesh for demo
-  const [currentTechEmail, setCurrentTechEmail] = useState<string>("");
 
-  // Sync state with session when it loads
-  useEffect(() => {
-    if (session?.user?.email) {
-      setCurrentTechEmail(session.user.email);
-    } else if (!currentTechEmail) {
-      // Default fallback if no one logged in (Testing Mode)
-      setCurrentTechEmail("ramesh@college.edu");
-    }
-  }, [session]);
-
-  const fetchTasks = async (emailOverride?: string) => {
-    const target = emailOverride || currentTechEmail;
-    if (!target) return;
-
-    setLoading(true);
+  // 1. Auto-Fetch on Load
+  const fetchTasks = async () => {
     try {
-      // CRITICAL FIX: Pass the email in the URL
-      const res = await fetch(`/api/technician/tasks?email=${target}`);
+      // No query params needed anymore - API uses cookies
+      const res = await fetch(`/api/technician/tasks`);
+      
+      if (res.status === 401) {
+        console.error("Unauthorized");
+        return;
+      }
+
       const data = await res.json();
       if (data.tasks) setTasks(data.tasks);
     } catch (error) {
@@ -68,28 +49,29 @@ export default function TechnicianDashboard() {
     }
   };
 
-  // Fetch whenever the email changes
   useEffect(() => {
-    if (currentTechEmail) {
-        fetchTasks();
+    if (status === 'authenticated') {
+      fetchTasks();
+      const interval = setInterval(fetchTasks, 30000); // Auto-refresh every 30s
+      return () => clearInterval(interval);
     }
-    const interval = setInterval(() => fetchTasks(), 60000);
-    return () => clearInterval(interval);
-  }, [currentTechEmail]);
+  }, [status]);
 
   const updateStatus = async (id: string, newStatus: string) => {
+    // Optimistic Update (UI updates instantly)
+    setTasks(prev => prev.map(t => t._id === id ? { ...t, status: newStatus } : t));
+
     try {
-      const res = await fetch('/api/technician/update-status', {
+      await fetch('/api/technician/update-status', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ incidentId: id, status: newStatus }),
       });
-      
-      if (res.ok) {
-        fetchTasks();
-      }
+      // Re-fetch to ensure sync
+      fetchTasks();
     } catch (error) {
       alert("Failed to update status");
+      fetchTasks(); // Revert on error
     }
   };
 
@@ -101,69 +83,40 @@ export default function TechnicianDashboard() {
 
   const breachedJobs = tasks.filter(t => isSlaBreached(t.createdAt) && t.status !== 'Resolved');
   const activeJobs = tasks.filter(t => t.status !== 'Resolved');
-  
-  const alerts = [];
-  if (breachedJobs.length > 0) {
-    alerts.push({ type: 'danger', msg: `⚠️ ${breachedJobs.length} tickets have breached the 15m SLA!` });
-  }
-  if (activeJobs.length > 0) {
-    alerts.push({ type: 'info', msg: `🔔 You have ${activeJobs.length} active tickets.` });
+
+  if (status === 'loading' || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans">
       
       {/* --- LEFT: NOTIFICATION CENTER --- */}
-      <aside className="w-full md:w-80 bg-white border-r border-slate-200 p-6 flex-shrink-0">
+      <aside className="w-full md:w-80 bg-white border-r border-slate-200 p-6 shrink-0">
         <div className="flex items-center gap-2 mb-6 text-slate-800">
            <Bell className="w-6 h-6 text-blue-600" />
-           <h2 className="text-xl font-bold">Notifications</h2>
-        </div>
-        
-        {/* DEMO TOOL: USER SWITCHER */}
-        <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">
-                Viewing Dashboard As:
-            </label>
-            <div className="flex gap-2">
-                <input 
-                    type="text" 
-                    value={currentTechEmail}
-                    onChange={(e) => setCurrentTechEmail(e.target.value)}
-                    className="w-full text-sm p-2 border rounded bg-white"
-                    placeholder="Enter tech email..."
-                />
-                <button 
-                    onClick={() => fetchTasks()}
-                    className="p-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
-                    title="Refresh Data"
-                >
-                    <RefreshCw className="w-4 h-4" />
-                </button>
-            </div>
-            <p className="text-xs text-slate-400 mt-2">
-                *Type email (e.g. sameer@college.edu) to test other views.
-            </p>
+           <h2 className="text-xl font-bold">My Updates</h2>
         </div>
         
         <div className="space-y-4">
-          {alerts.length === 0 && <p className="text-slate-500 italic text-sm">No new alerts.</p>}
-          
-          {alerts.map((alert, idx) => (
-            <div key={idx} className={`p-4 rounded-lg border text-sm font-medium ${
-                alert.type === 'danger' 
-                ? 'bg-red-50 border-red-200 text-red-800' 
-                : 'bg-blue-50 border-blue-200 text-blue-800'
-            }`}>
-              {alert.msg}
+          {breachedJobs.length > 0 && (
+            <div className="p-4 rounded-lg border text-sm font-medium bg-red-50 border-red-200 text-red-800 animate-pulse">
+              ⚠️ {breachedJobs.length} tickets have breached SLA (15m)!
             </div>
-          ))}
+          )}
+          <div className="p-4 rounded-lg border text-sm font-medium bg-blue-50 border-blue-200 text-blue-800">
+             🔔 You have {activeJobs.length} active jobs in your queue.
+          </div>
         </div>
 
         <div className="mt-8 pt-8 border-t border-slate-100">
-          <h3 className="font-semibold text-slate-600 mb-4 text-sm uppercase tracking-wider">My Stats</h3>
+          <h3 className="font-semibold text-slate-600 mb-4 text-sm uppercase tracking-wider">Performance</h3>
           <div className="flex justify-between items-center py-2 border-b border-slate-50">
-            <span className="text-slate-600">Pending Jobs</span>
+            <span className="text-slate-600">Pending</span>
             <span className="font-bold text-slate-900">{activeJobs.length}</span>
           </div>
           <div className="flex justify-between items-center py-2 border-b border-slate-50">
@@ -180,28 +133,23 @@ export default function TechnicianDashboard() {
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Job Queue</h1>
             <div className="flex items-center gap-2 mt-1">
                 <User className="w-4 h-4 text-slate-400" />
-                <p className="text-slate-500">Logged in as: <span className="font-mono text-blue-600">{currentTechEmail}</span></p>
+                <p className="text-slate-500">Technician: <span className="font-semibold text-slate-700">{session?.user?.name}</span></p>
             </div>
           </div>
           <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="text-sm font-medium text-slate-600">Live Updates Active</span>
+            <span className="text-sm font-medium text-slate-600">System Live</span>
           </div>
         </header>
 
-        {loading ? (
-          <div className="flex flex-col items-center justify-center h-64">
-            <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-            <p className="text-slate-500 font-medium">Syncing schedule for {currentTechEmail}...</p>
-          </div>
-        ) : tasks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-96 bg-white rounded-3xl border-2 border-dashed border-slate-200 text-center p-8 hover:border-blue-200 transition-colors duration-300">
-            <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-6">
-              <CheckCircle className="w-10 h-10 text-blue-500" />
+        {tasks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-96 bg-white rounded-3xl border-2 border-dashed border-slate-200 text-center p-8">
+            <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
+              <CheckCircle className="w-10 h-10 text-green-500" />
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-2">All Caught Up!</h3>
+            <h3 className="text-2xl font-bold text-slate-900 mb-2">All Clear!</h3>
             <p className="text-slate-500 max-w-md mx-auto">
-              No active jobs found for <span className="font-bold">{currentTechEmail}</span>.
+              No pending jobs assigned to you. Enjoy the break!
             </p>
           </div>
         ) : (

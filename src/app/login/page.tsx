@@ -28,21 +28,22 @@ export default function LoginPage() {
         setError("Invalid email or password.");
         setLoading(false);
       } else {
+        // 1. Fetch the session to get the role
         const session = await getSession();
-        // Type casting to avoid TS error for custom role
         const role = (session?.user as any)?.role;
 
-        // --- CORRECT REDIRECTION LOGIC ---
+        // 2. STRICT Role-Based Redirection
         if (role === "admin") {
-            router.push("/admin");
+          router.push("/admin");
         } else if (role === "technician") {
-            // Redirect to the Technician Dashboard
-            router.push("/technician/dashboard"); 
+          router.push("/technician/dashboard"); // <--- FIXED: Was pointing to /staff
+        } else if (role === "student") {
+          router.push("/student/dashboard");
         } else {
-            // Default for students
-            router.push("/student/dashboard");
+          // Fallback for unknown roles
+          router.push("/");
         }
-
+        
         router.refresh();
       }
     } catch (err) {
@@ -52,14 +53,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-indigo-800 to-slate-900 p-4 font-sans">
-      {/* Decorative Blobs */}
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-900 via-indigo-800 to-slate-900 p-4 font-sans">
       <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
       <div className="absolute bottom-20 right-20 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
 
       <div className="max-w-md w-full bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8 relative z-10">
         
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-100 text-blue-600 mb-4 shadow-sm">
             <Lock className="w-6 h-6" />
@@ -70,7 +69,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Error Alert */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl flex items-center gap-3 text-sm font-medium animate-in fade-in slide-in-from-top-2">
             <AlertCircle className="w-5 h-5 shrink-0" />
@@ -79,8 +77,6 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          
-          {/* Email Field */}
           <div className="space-y-1.5">
             <label className="text-sm font-semibold text-gray-700 ml-1">Email Address</label>
             <div className="relative group">
@@ -98,13 +94,9 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Password Field */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between ml-1">
               <label className="text-sm font-semibold text-gray-700">Password</label>
-              <a href="#" className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline">
-                Forgot password?
-              </a>
             </div>
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -121,7 +113,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
@@ -137,7 +128,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-600">
             Don't have an account?{" "}

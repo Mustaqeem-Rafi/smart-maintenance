@@ -72,7 +72,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Reported successfully", incident: newIncident }, { status: 201 });
 
   } catch (error: any) {
-    console.error("API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
