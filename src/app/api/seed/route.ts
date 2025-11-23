@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/src/lib/db';
 import User from '@/src/models/User';
 import Incident from '@/src/models/Incident';
+import Prediction from '@/src/models/Prediction';
+import Notification from '@/src/models/Notification';
+import bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,28 +12,42 @@ export async function GET() {
   try {
     await connectDB();
 
-    console.log("🌱 Starting Smart Seed (Additive Mode)...");
+    console.log("🌱 Starting Full-Proof Seed...");
 
-    // 1. FIND AN EXISTING REPORTER
-    // We need a real user ID to link these incidents to.
-    // We try to find a student, or fall back to any user.
-    let reporter = await User.findOne({ role: 'student' });
-    
-    if (!reporter) {
-      // Fallback: Try finding ANY user
-      reporter = await User.findOne({});
-    }
+    // 1. CLEAN SLATE (Incidents & Predictions only)
+    // We wipe incidents to prevent "duplicate pattern" noise in the AI engine
+    await Incident.deleteMany({});
+    await Prediction.deleteMany({});
+    await Notification.deleteMany({});
+    console.log("🧹 Old data cleared.");
 
-    if (!reporter) {
-      return NextResponse.json(
-        { error: "No users found! Please register a user via /register first." }, 
-        { status: 400 }
+    // 2. ENSURE USERS EXIST (Upsert Strategy)
+    const passwordHash = await bcrypt.hash("password123", 10);
+
+    // Helper to create/update user
+    const upsertUser = async (email: string, name: string, role: string, dept?: string) => {
+      return await User.findOneAndUpdate(
+        { email }, // Find by email
+        { 
+          name, 
+          password: passwordHash, 
+          role, 
+          department: dept,
+          isAvailable: true 
+        },
+        { upsert: true, new: true } // Create if not exists, return new doc
       );
-    }
+    };
 
-    console.log(`📝 Assigning smart data to user: ${reporter.name} (${reporter._id})`);
+    const admin = await upsertUser("admin@college.edu", "Principal Admin", "admin");
+    const student = await upsertUser("rahul@college.edu", "Rahul Student", "student");
+    const tech = await upsertUser("ramesh@college.edu", "Ramesh Technician", "technician", "Electrical");
 
-    // --- HELPER: Create Date relative to now ---
+    console.log("👤 Users verified/created.");
+
+    // 3. PLANT DATA STORIES (The AI Triggers)
+    
+    // --- HELPER: Relative Date ---
     const daysAgo = (days: number, hour: number = 10) => {
       const d = new Date();
       d.setDate(d.getDate() - days);
@@ -40,10 +57,8 @@ export async function GET() {
 
     const incidents = [];
 
-    // ====================================================
-    // STORY 1: THE DYING ELEVATOR (Deterioration Model)
-    // Intervals shrinking: 20 -> 15 -> 10 -> 5 days
-    // ====================================================
+    // STORY 1: THE DYING ELEVATOR (Deterioration)
+    // Intervals: 20 -> 15 -> 10 -> 5 days (Accelerating failure)
     const elevatorDates = [5, 15, 30, 50];
     elevatorDates.forEach((day) => {
       incidents.push({
@@ -53,15 +68,14 @@ export async function GET() {
         priority: "High",
         status: "Resolved",
         location: { type: "Point", coordinates: [77.6, 12.9], address: "Hostel C - Elevator Shaft" },
-        reportedBy: reporter._id,
+        reportedBy: student._id,
+        resolvedAt: daysAgo(day - 1),
         createdAt: daysAgo(day)
       });
     });
 
-    // ====================================================
-    // STORY 2: THE CLOCKWORK AC (High Confidence Model)
-    // Fails exactly every 14 days. Last one 13 days ago.
-    // ====================================================
+    // STORY 2: THE CLOCKWORK AC (High Confidence Forecast)
+    // Fails every 14 days. Last failure 13 days ago. Next is tomorrow.
     [13, 27, 41, 55, 69].forEach((day) => {
       incidents.push({
         title: "Library AC Not Cooling",
@@ -70,15 +84,14 @@ export async function GET() {
         priority: "Medium",
         status: "Resolved",
         location: { type: "Point", coordinates: [77.59, 12.91], address: "Central Library - Reading Room" },
-        reportedBy: reporter._id,
+        reportedBy: student._id,
+        resolvedAt: daysAgo(day - 1),
         createdAt: daysAgo(day)
       });
     });
 
-    // ====================================================
-    // STORY 3: THE MONDAY CURSE (Seasonality Model)
+    // STORY 3: THE MONDAY CURSE (Seasonality)
     // Fails only on Mondays.
-    // ====================================================
     let current = new Date();
     let mondaysFound = 0;
     while (mondaysFound < 5) {
@@ -86,24 +99,22 @@ export async function GET() {
       if (current.getDay() === 1) { // 1 = Monday
         incidents.push({
           title: "Gym Water Cooler Leaking",
-          description: "Water cooler leaking puddle on the floor.",
+          description: "Water cooler leaking puddle on the floor after weekend.",
           category: "Water",
           priority: "Medium",
           status: "Resolved",
           location: { type: "Point", coordinates: [77.61, 12.92], address: "Sports Complex - Gym" },
-          reportedBy: reporter._id,
+          reportedBy: student._id,
           createdAt: new Date(current)
         });
         mondaysFound++;
       }
     }
 
-    // ====================================================
-    // STORY 4: THE CHAIN REACTION (Correlation Model)
-    // "Main Block Power" fails -> 2 hours later -> "Main Block Wifi" fails
-    // ====================================================
+    // STORY 4: THE CHAIN REACTION (Correlation)
+    // Power fail -> 2h later -> Wifi fail
     [2, 10, 20].forEach((day) => {
-      // Event A: Power Cut
+      // Event A
       incidents.push({
         title: "Main Block Power Outage",
         description: "Complete blackout in the west wing.",
@@ -111,11 +122,10 @@ export async function GET() {
         priority: "High",
         status: "Resolved",
         location: { type: "Point", coordinates: [77.62, 12.93], address: "Main Block" },
-        reportedBy: reporter._id,
-        createdAt: daysAgo(day, 10) // 10:00 AM
+        reportedBy: student._id,
+        createdAt: daysAgo(day, 10)
       });
-
-      // Event B: Wifi Down (2 hours later)
+      // Event B (2 hours later)
       incidents.push({
         title: "Main Block Wi-Fi Down",
         description: "Routers are off due to earlier power surge.",
@@ -123,15 +133,13 @@ export async function GET() {
         priority: "High",
         status: "Resolved",
         location: { type: "Point", coordinates: [77.62, 12.93], address: "Main Block" },
-        reportedBy: reporter._id,
-        createdAt: daysAgo(day, 12) // 12:00 PM
+        reportedBy: student._id,
+        createdAt: daysAgo(day, 12)
       });
     });
 
-    // ====================================================
-    // STORY 5: THE SPATIAL CLUSTER (Anomaly Model)
-    // 5 random failures in "Science Block" TODAY
-    // ====================================================
+    // STORY 5: THE SPATIAL CLUSTER (Anomaly)
+    // 5 failures in Science Block TODAY
     const scienceIssues = [
       { cat: "Water", title: "Lab Sink Clogged" },
       { cat: "Electricity", title: "Projector Sparking" },
@@ -146,19 +154,28 @@ export async function GET() {
         description: "Reported during lab session.",
         category: issue.cat,
         priority: "High",
-        status: "Open",
+        status: "Open", // Active!
         location: { type: "Point", coordinates: [77.63, 12.94], address: "Science Block - Chemistry Lab" },
-        reportedBy: reporter._id,
-        createdAt: new Date(Date.now() - idx * 1000 * 60 * 30) // Every 30 mins today
+        reportedBy: student._id,
+        createdAt: new Date(Date.now() - idx * 1000 * 60 * 30)
       });
     });
 
-    // 2. Insert the Data (Append, do not delete)
     await Incident.insertMany(incidents);
 
     return NextResponse.json({ 
-      message: "Smart Data Injected Successfully!", 
-      details: `Added ${incidents.length} incidents to existing database. Assigned to user: ${reporter.name}.`
+      success: true,
+      message: "Database Reset & Seeded Successfully!", 
+      users: {
+        admin: "admin@college.edu",
+        student: "rahul@college.edu",
+        technician: "ramesh@college.edu",
+        password: "password123"
+      },
+      stats: {
+        incidentsCreated: incidents.length,
+        storiesInjected: 5
+      }
     });
 
   } catch (error: any) {
