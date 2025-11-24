@@ -44,3 +44,17 @@ Python-Free AI: The prediction engine uses pure TypeScript implementations of st
 
 📄 License
 This project is open-source and available under the MIT License.
+
+### To test the platform deployed on vercel,
+1. Create new user accounts by going to register 
+2. Use these existing credentials
+    1. admin@college.edu - admin
+    2. ramesh@college.edu - technician -Electrical
+    3. sameer@college.edu - technician - internet
+    4. surendar@college.edu - technician - civil
+    5. ajay@college.edu - technician - plumbing
+    6. rakesh@college.edu - technician - Electrical
+    7. rahul@college.edu - Student
+3. Password for all:
+    password123
+
