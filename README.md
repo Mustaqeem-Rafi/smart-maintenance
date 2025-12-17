@@ -1,5 +1,5 @@
 ## Smart Maintenance & Incident Prediction System 🛠️🤖
-Hackathon Problem Statement 1: Smart Maintenance, Incident Tracking & Prediction SystemA comprehensive, full-stack platform designed to streamline campus facility management. It features real-time incident reporting, intelligent technician assignment, interactive heatmaps, and a deterministic AI engine that predicts infrastructure failures before they happen.
+Hackathon Problem Statement : Smart Maintenance, Incident Tracking & Prediction SystemA comprehensive, full-stack platform designed to streamline campus facility management. It features real-time incident reporting, intelligent technician assignment, interactive heatmaps, and a deterministic AI engine that predicts infrastructure failures before they happen.
 
 ### 🚀 Key Features🧠 AI & Predictive MaintenanceDeterioration Detection: 
 
@@ -57,4 +57,7 @@ This project is open-source and available under the MIT License.
     7. rahul@college.edu - Student
 3. Password for all:
     password123
+
+### Developers
+1. Javeria Taj
 
