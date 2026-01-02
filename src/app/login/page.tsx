@@ -18,6 +18,7 @@ export default function LoginPage() {
     setError("");
 
     try {
+      // 1. Attempt Sign In
       const res = await signIn("credentials", {
         email: form.email,
         password: form.password,
@@ -28,33 +29,22 @@ export default function LoginPage() {
         setError("Invalid email or password.");
         setLoading(false);
       } else {
+        // 2. Get Session to check Role
         const session = await getSession();
-        // Type casting to avoid TS error for custom role
+        // Type casting to avoid TS error if 'role' isn't in default types
         const role = (session?.user as any)?.role;
 
-<<<<<<< Updated upstream
-        // --- REDIRECT LOGIC UPDATED HERE ---
+        // --- REDIRECT LOGIC (Conflict Resolved) ---
         if (role === "admin") {
           router.push("/admin");
         } else if (role === "technician") {
-          router.push("/staff/dashboard"); // Redirects to the new Staff Dashboard
+          // Correctly redirects to the dashboard we built
+          router.push("/technician/dashboard"); 
         } else {
+          // Default for students
           router.push("/student/dashboard");
         }
         
-=======
-        // --- CORRECT REDIRECTION LOGIC ---
-        if (role === "admin") {
-            router.push("/admin");
-        } else if (role === "technician") {
-            // Redirect to the Technician Dashboard we created
-            router.push("/technician/dashboard"); 
-        } else {
-            // Default for students
-            router.push("/student/dashboard");
-        }
-
->>>>>>> Stashed changes
         router.refresh();
       }
     } catch (err) {
