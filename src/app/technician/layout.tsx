@@ -1,5 +1,8 @@
+"use client";
+
 import Link from 'next/link';
 import { Wrench, ClipboardList, User, LogOut, Zap } from 'lucide-react';
+import { signOut } from 'next-auth/react';
 
 export default function TechnicianLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -8,7 +11,7 @@ export default function TechnicianLayout({ children }: { children: React.ReactNo
       <aside className="w-72 bg-slate-900 text-white hidden md:flex flex-col shadow-2xl fixed h-full z-50 overflow-hidden">
         
         {/* Decorative Gradient Blob */}
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-blue-900/20 to-transparent pointer-events-none" />
+        <div className="absolute top-0 left-0 w-full h-full bg-linear-to-b from-blue-900/20 to-transparent pointer-events-none" />
 
         {/* Header */}
         <div className="relative p-8 border-b border-slate-800/50">
@@ -43,9 +46,12 @@ export default function TechnicianLayout({ children }: { children: React.ReactNo
           </Link>
         </nav>
 
-        {/* Footer */}
+        {/* Footer - FIXED LOGOUT BUTTON */}
         <div className="relative p-4 border-t border-slate-800/50 bg-slate-900/50 backdrop-blur-sm">
-          <button className="flex items-center justify-center gap-2 px-4 py-3 w-full text-red-400 hover:text-white hover:bg-red-600 rounded-xl transition-all duration-300 group">
+          <button 
+            onClick={() => signOut({ callbackUrl: '/login' })}
+            className="flex items-center justify-center gap-2 px-4 py-3 w-full text-red-400 hover:text-white hover:bg-red-600 rounded-xl transition-all duration-300 group"
+          >
             <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
             <span className="font-semibold">Sign Out</span>
           </button>

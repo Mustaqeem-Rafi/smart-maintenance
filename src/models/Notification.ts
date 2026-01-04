@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface INotification extends Document {
-  userId: mongoose.Types.ObjectId; // The recipient (Student/Staff)
+  userId: mongoose.Types.ObjectId;
   incidentId: mongoose.Types.ObjectId;
   title: string;
   message: string;

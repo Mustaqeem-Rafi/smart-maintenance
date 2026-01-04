@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Smart Maintenance & Incident Prediction System 🛠️🤖
+Hackathon Problem Statement : Smart Maintenance, Incident Tracking & Prediction SystemA comprehensive, full-stack platform designed to streamline campus facility management. It features real-time incident reporting, intelligent technician assignment, interactive heatmaps, and a deterministic AI engine that predicts infrastructure failures before they happen.
 
-## Getting Started
+### 🚀 Key Features🧠 AI & Predictive MaintenanceDeterioration Detection: 
 
-First, run the development server:
+Uses Spearman Rank Correlation & Linear Regression to detect accelerating failure rates (e.g., an elevator breaking down more frequently).Wear-Out Analysis: 
+Implements Weibull Survival Analysis to estimate the probability of equipment failure based on age.Seasonal Forecasting: Uses Chi-Square tests to identify recurring issues (e.g., AC filters clogging every 2 weeks or water leaks on Mondays).Spatial Clustering: Uses Poisson Distribution to detect infrastructure anomalies (e.g., 5 electrical failures in one block = System Failure).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+👥 Role-Based Access Control (RBAC)Student/Staff Portal: Simple, multi-step "Wizard" for reporting issues with GPS location locking and photo uploads. Live status tracking timeline.Technician Dashboard: Dedicated job queue with "Accept", "Start", and "Resolve" workflows. Auto-refreshes and alerts on SLA breaches.Admin Command Center: Live heatmap of high-density zones, AI diagnostics trigger, and full user management.
+⚙️ Intelligent AutomationSmart Priority Matrix: Auto-calculates priority (Low/Medium/High) based on keywords (e.g., "fire", "spark") and location context (e.g., "Server Room").Auto-Assignment: Algorithms assign the best-suited technician based on Specialty (Plumbing/Electrical) and Current Workload.Duplicate Shield: Prevents spam by checking for similar active reports within a 20m GPS radius.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+🛠️ Tech StackFramework: Next.js 15 (App Router)Language: TypeScriptDatabase: MongoDB (via Mongoose)Styling: Tailwind CSSAuthentication: NextAuth.js (Credentials Provider)Maps: Leaflet (React-Leaflet)Icons: Lucide React
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+⚡ Getting Started1. PrerequisitesNode.js 18+ installed.A MongoDB Atlas connection string.2. Clone & Installgit clone [https://github.com/your-username/smart-maintenance.git](https://github.com/your-username/smart-maintenance.git)
+cd smart-maintenance
+npm install
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Environment SetupCreate a .env.local file in the root directory:# MongoDB Connection String
+MONGODB_URI=mongodb+srv://<user>:<password>@cluster0.example.mongodb.net/smart_maintenance
 
-## Learn More
+# NextAuth Secret (Any random string)
+NEXTAUTH_SECRET=your_super_secret_key_here
+NEXTAUTH_URL=http://localhost:3000
 
-To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. Run the Development Servernpm run dev
+Open http://localhost:3000 in your browser.🧪 Seeding Data & Testing AITo demonstrate the AI capabilities, you don't need to wait for weeks of data. We have included a Smart Seed Script that plants specific mathematical patterns in the database.Seed the Database:Visit: http://localhost:3000/api/seedResult: Creates Users and injects 25+ incidents simulating deterioration, seasonality, and clusters.Login Credentials:Admin: admin@college.edu / password123Technician: ramesh@college.edu / password123Student: rahul@college.edu / password123Run AI Diagnostics:Login as Admin.Go to the Dashboard.Click the "Run Diagnostics" button.Observe: The system will generate cards like "CRITICAL: System Deterioration" and "Seasonal Pattern: Mondays".
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+📂 Project Structuresrc/
+├── app/
+│   ├── api/              # Backend Routes (Incidents, Auth, Predictions)
+│   ├── admin/            # Admin Dashboard Pages
+│   ├── student/          # Student Dashboard Pages
+│   ├── technician/       # Technician Dashboard Pages
+│   ├── report/           # Public Reporting Wizard
+│   └── login/            # Auth Pages
+├── components/           # Reusable UI (Heatmap, Bell, Sidebar)
+├── lib/                  # DB Connection & Helpers
+├── models/               # Mongoose Schemas (User, Incident, Prediction)
+└── middleware.ts         # RBAC Security Logic
 
-## Deploy on Vercel
+🏆 Hackathon Highlights: 
+Python-Free AI: The prediction engine uses pure TypeScript implementations of statistical models, ensuring zero-latency analysis without external ML servers.Security: Middleware ensures strict separation of concerns. Technicians cannot access Admin routes, and Students cannot see internal tickets.UX: "Dark Mode" support and a mobile-first design for field technicians.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+📄 License
+This project is open-source and available under the MIT License.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### To test the platform deployed on vercel,
+1. Create new user accounts by going to register 
+2. Use these existing credentials
+    1. admin@college.edu - admin
+    2. ramesh@college.edu - technician -Electrical
+    3. sameer@college.edu - technician - internet
+    4. surendar@college.edu - technician - civil
+    5. ajay@college.edu - technician - plumbing
+    6. rakesh@college.edu - technician - Electrical
+    7. rahul@college.edu - Student
+3. Password for all:
+    password123
+
+### Developers
+1. Javeria Taj
+

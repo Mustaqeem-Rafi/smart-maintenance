@@ -9,9 +9,7 @@ export async function PUT(
   try {
     await connectDB();
     const { id } = await params;
-    
     await Notification.findByIdAndUpdate(id, { isRead: true });
-    
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
   ArrowLeft, 
@@ -12,7 +12,10 @@ import {
   Loader2
 } from "lucide-react";
 
-export default function ReportDetailsPage() {
+// Force dynamic rendering to prevent build errors
+export const dynamic = "force-dynamic";
+
+function DetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const category = searchParams.get("category");
@@ -30,9 +33,13 @@ export default function ReportDetailsPage() {
 
   // Load existing data if going back
   useEffect(() => {
-    const saved = sessionStorage.getItem("incidentFormData");
-    if (saved) {
-      setFormData(JSON.parse(saved));
+    try {
+      const saved = sessionStorage.getItem("incidentFormData");
+      if (saved) {
+        setFormData(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error("Failed to load draft", e);
     }
   }, []);
 
@@ -147,7 +154,7 @@ export default function ReportDetailsPage() {
           )}
         </div>
 
-        {/* Image URL (Simplified for MVP) */}
+        {/* Image URL */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">Photo Evidence (Optional)</label>
           <div className="relative">
@@ -181,6 +188,17 @@ export default function ReportDetailsPage() {
         </button>
       </div>
 
+    </div>
+  );
+}
+
+// CRITICAL: Wrap in Suspense to prevent Next.js build error
+export default function ReportDetailsPage() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-blue-600"/></div>}>
+        <DetailsContent />
+      </Suspense>
     </div>
   );
 }

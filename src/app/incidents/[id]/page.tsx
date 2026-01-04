@@ -1,46 +1,59 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { 
   ArrowLeft, 
-  Calendar, 
-  CheckCircle, 
-  Clock, 
   MapPin, 
   Briefcase,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Send
 } from "lucide-react";
+
+// 1. Updated Interface to match backend "content" field
+interface MessageData {
+  _id: string;
+  content: string; // Changed from text to content
+  senderId: { 
+    _id: string; 
+    name: string; 
+    role: string;
+    email?: string; 
+  };
+  createdAt: string;
+}
 
 interface IncidentDetail {
   _id: string;
   title: string;
   description: string;
   category: string;
-  priority: string;
   status: string;
   location: { address?: string };
   createdAt: string;
   images: string[];
-  // Note: We typically don't show "assignedTo" or internal details to students
 }
 
 export default function StudentIncidentPage() {
   const params = useParams();
+  const { data: session } = useSession();
   const id = params?.id as string; 
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const [incident, setIncident] = useState<IncidentDetail | null>(null);
+  const [messages, setMessages] = useState<MessageData[]>([]);
+  const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Fetch Incident Details
   useEffect(() => {
     if (!id) return;
-
     const fetchIncident = async () => {
       try {
-        // We reuse the same API (It's public read access)
         const res = await fetch(`/api/incidents/${id}`);
         if (!res.ok) throw new Error("Incident not found");
         const data = await res.json();
@@ -51,9 +64,57 @@ export default function StudentIncidentPage() {
         setLoading(false);
       }
     };
-
     fetchIncident();
   }, [id]);
+
+  // Fetch and Poll Messages
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchMessages = async () => {
+      try {
+        const res = await fetch(`/api/incidents/${id}/messages`);
+        const data = await res.json();
+        // Backend returns { messages: [...] }
+        setMessages(data.messages || []);
+      } catch (err) {
+        console.error("Chat error:", err);
+      }
+    };
+
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 3000); 
+    return () => clearInterval(interval);
+  }, [id]);
+
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim()) return;
+
+    try {
+      // 2. Updated POST body to use "content"
+      const res = await fetch(`/api/incidents/${id}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newMessage }) 
+      });
+
+      if (res.ok) {
+        setNewMessage("");
+        // Refresh messages immediately for better UX
+        const refreshRes = await fetch(`/api/incidents/${id}/messages`);
+        const data = await refreshRes.json();
+        setMessages(data.messages);
+      }
+    } catch (err) {
+      console.error("Failed to send message");
+    }
+  };
 
   if (loading) return (
     <div className="flex h-screen items-center justify-center bg-gray-50">
@@ -64,132 +125,112 @@ export default function StudentIncidentPage() {
   if (error || !incident) return (
     <div className="flex h-screen items-center justify-center bg-gray-50 p-4">
       <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-md w-full">
-        <div className="inline-flex p-3 bg-red-100 rounded-full mb-4">
-          <AlertCircle className="w-8 h-8 text-red-600" />
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Incident Not Found</h2>
-        <p className="text-gray-500 mb-6">This report ID does not exist or you do not have permission to view it.</p>
-        <Link href="/report" className="block w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition">
-          Report a New Issue
-        </Link>
+        <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+        <h2 className="text-xl font-bold mb-2">Error</h2>
+        <p className="text-gray-500 mb-6">{error || "Incident not found"}</p>
+        <Link href="/student/dashboard" className="bg-blue-600 text-white px-6 py-2 rounded-xl">Back Home</Link>
       </div>
     </div>
   );
 
-  // Helper: Status Badge Style
   const getStatusBadge = (status: string) => {
     const styles = {
-      "Open": "bg-red-100 text-red-700 border-red-200",
-      "In Progress": "bg-yellow-100 text-yellow-700 border-yellow-200",
-      "Resolved": "bg-green-100 text-green-700 border-green-200"
+      "Open": "bg-red-100 text-red-700",
+      "In Progress": "bg-yellow-100 text-yellow-700",
+      "Resolved": "bg-green-100 text-green-700"
     };
     return styles[status as keyof typeof styles] || "bg-gray-100 text-gray-700";
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans p-4 md:p-8">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+      <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Header Navigation */}
-        <div className="mb-6">
-          <Link href="/report" className="text-sm text-gray-500 hover:text-blue-600 flex items-center gap-2 transition">
-            <ArrowLeft className="w-4 h-4" /> Back to Home
+        {/* Left Column: Details */}
+        <div className="lg:col-span-2 space-y-6">
+          <Link href="/student/dashboard" className="text-sm text-gray-500 hover:text-blue-600 flex items-center gap-2 mb-4">
+            <ArrowLeft className="w-4 h-4" /> Back to Dashboard
           </Link>
-        </div>
 
-        {/* Main Status Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6">
-          <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white rounded-2xl shadow-sm border p-6">
+            <div className="flex justify-between items-start mb-6">
               <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-2xl font-bold text-gray-900">{incident.title}</h1>
-                </div>
-                <p className="text-sm text-gray-500 flex items-center gap-2">
-                  <span className="font-mono text-xs bg-gray-200 px-2 py-0.5 rounded">#{incident._id.slice(-6).toUpperCase()}</span>
-                  <span>•</span>
-                  <Clock className="w-3.5 h-3.5" /> {new Date(incident.createdAt).toLocaleDateString()}
-                </p>
+                <h1 className="text-2xl font-bold text-gray-900">{incident.title}</h1>
+                <p className="text-sm text-gray-500 mt-1">Reported on {new Date(incident.createdAt).toLocaleDateString()}</p>
               </div>
-              <div className={`px-4 py-2 rounded-full border text-sm font-bold flex items-center gap-2 w-fit ${getStatusBadge(incident.status)}`}>
-                {incident.status === "Resolved" ? <CheckCircle className="w-4 h-4" /> : <Loader2 className="w-4 h-4" />}
+              <div className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusBadge(incident.status)}`}>
                 {incident.status}
               </div>
             </div>
-          </div>
 
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-            
-            {/* Details Column */}
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3">Issue Details</h3>
-                <p className="text-gray-600 leading-relaxed">{incident.description}</p>
+                <h3 className="text-xs font-bold text-gray-400 uppercase">Description</h3>
+                <p className="text-gray-700 mt-1">{incident.description}</p>
+              </div>
+              
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Briefcase className="w-4 h-4 text-blue-500" /> {incident.category}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <MapPin className="w-4 h-4 text-purple-500" /> {incident.location?.address || "Location Attached"}
+                </div>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <div className="p-2 bg-blue-50 rounded-lg text-blue-600"><Briefcase className="w-4 h-4" /></div>
-                  <span className="font-medium">{incident.category} Issue</span>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><MapPin className="w-4 h-4" /></div>
-                  <span className="font-medium">{incident.location?.address || "GPS Location Shared"}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Evidence / Image Column */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3">Photo Evidence</h3>
-              {incident.images && incident.images.length > 0 ? (
-                <div className="aspect-video rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
-                  <img 
-                    src={incident.images[0]} 
-                    alt="Incident Evidence" 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="aspect-video rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center text-gray-400 text-sm">
-                  No photos uploaded
+              {incident.images?.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-xs font-bold text-gray-400 uppercase mb-2">Evidence</h3>
+                  <img src={incident.images[0]} className="rounded-xl w-full max-h-64 object-cover border" alt="evidence" />
                 </div>
               )}
             </div>
-
           </div>
         </div>
 
-        {/* Status Timeline (Simplified for Students) */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-6">Progress Timeline</h3>
-          <div className="space-y-8 relative pl-4 border-l-2 border-gray-100 ml-2">
-            
-            {/* Step 1: Reported */}
-            <div className="relative">
-              <div className="absolute -left-[21px] top-0 w-4 h-4 rounded-full bg-blue-600 border-4 border-white shadow-sm"></div>
-              <p className="text-sm font-bold text-gray-900">Report Received</p>
-              <p className="text-xs text-gray-500 mt-0.5">We have received your report.</p>
+        {/* Right Column: Chat */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-2xl shadow-sm border flex flex-col h-[600px]">
+            <div className="p-4 border-b">
+              <h3 className="font-bold text-gray-900">Maintenance Chat</h3>
+              <p className="text-xs text-gray-500">Discuss this issue with the team</p>
             </div>
 
-            {/* Step 2: In Progress (Conditional) */}
-            {(incident.status === "In Progress" || incident.status === "Resolved") && (
-              <div className="relative">
-                <div className="absolute -left-[21px] top-0 w-4 h-4 rounded-full bg-yellow-500 border-4 border-white shadow-sm"></div>
-                <p className="text-sm font-bold text-gray-900">Maintenance Team Assigned</p>
-                <p className="text-xs text-gray-500 mt-0.5">A technician is working on this issue.</p>
-              </div>
-            )}
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {messages.map((msg) => {
+                // Improved isMe check using session data
+                const isMe = msg.senderId?._id === (session?.user as any)?.id || msg.senderId?.email === session?.user?.email;
 
-            {/* Step 3: Resolved (Conditional) */}
-            {incident.status === "Resolved" && (
-              <div className="relative">
-                <div className="absolute -left-[21px] top-0 w-4 h-4 rounded-full bg-green-500 border-4 border-white shadow-sm"></div>
-                <p className="text-sm font-bold text-gray-900">Issue Resolved</p>
-                <p className="text-xs text-gray-500 mt-0.5">This ticket has been closed.</p>
-              </div>
-            )}
+                return (
+                  <div key={msg._id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                    <span className="text-[10px] text-gray-400 mb-1 px-1">
+                      {isMe ? "You" : `${msg.senderId?.name || 'User'} (${msg.senderId?.role || 'Staff'})`}
+                    </span>
+                    <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${
+                      isMe ? "bg-blue-600 text-white rounded-tr-none" : "bg-gray-100 text-gray-800 rounded-tl-none"
+                    }`}>
+                      {/* 3. Render content instead of text */}
+                      {msg.content}
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={chatEndRef} />
+            </div>
 
+            {/* Message Input */}
+            <form onSubmit={handleSendMessage} className="p-4 border-t flex gap-2">
+              <input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Ask a question..."
+                className="flex-1 bg-gray-50 border-none focus:ring-2 focus:ring-blue-500 rounded-xl px-4 py-2 text-sm text-black"
+              />
+              <button type="submit" className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 transition">
+                <Send className="w-5 h-5" />
+              </button>
+            </form>
           </div>
         </div>
 

@@ -3,32 +3,33 @@ import { getServerSession } from "next-auth";
 import connectDB from "@/src/lib/db";
 import Incident from "@/src/models/Incident";
 import User from "@/src/models/User";
-import { authOptions } from "@/src/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/src/app/api/auth/[...nextauth]/route"; // Import your auth config
 
 export async function GET() {
   try {
     await connectDB();
     
-    // 1. Get Session
+    // 1. Get the current user's session
     const session = await getServerSession(authOptions);
+    
     if (!session || !session.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Find User ID from Email
+    // 2. Find the User ID based on the session email
     const user = await User.findOne({ email: session.user.email });
+    
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // 3. Find incidents reported by this specific user
+    // 3. Find incidents reported by this user
     const incidents = await Incident.find({ reportedBy: user._id })
       .sort({ createdAt: -1 }); // Newest first
 
     return NextResponse.json({ incidents });
 
   } catch (error: any) {
-    console.error("My Reports API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

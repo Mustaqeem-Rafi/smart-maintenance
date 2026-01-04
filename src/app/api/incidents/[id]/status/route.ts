@@ -13,11 +13,6 @@ export async function PUT(
     const { id } = await params;
     const { status } = await req.json();
 
-    if (!['Open', 'In Progress', 'Resolved'].includes(status)) {
-        return NextResponse.json({ error: "Invalid status" }, { status: 400 });
-    }
-
-    // Fetch with populate to get reporter name for the message
     const updatedIncident = await Incident.findByIdAndUpdate(
       id,
       { 
@@ -25,41 +20,49 @@ export async function PUT(
         resolvedAt: status === 'Resolved' ? new Date() : null
       },
       { new: true }
-    ).populate('reportedBy', 'name');
+    ).populate('reportedBy', 'name').populate('assignedTo', 'name');
 
-    if (!updatedIncident) {
-      return NextResponse.json({ error: "Incident not found" }, { status: 404 });
-    }
+    if (!updatedIncident) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     // --- NOTIFICATIONS ---
     if (status === 'Resolved') {
-      
-      // 1. Notify Reporter (Student/Staff)
-      // We use (updatedIncident.reportedBy as any)._id because TS sees it as just an ObjectId or just a Name string depending on population
-      await Notification.create({
+      const notifications = [];
+      const admins = await User.find({ role: 'admin' });
+
+      // A. Notify Reporter ONLY
+      // We use 'as any' because populated field structure differs from ObjectId
+      notifications.push({
         userId: (updatedIncident.reportedBy as any)._id, 
         incidentId: updatedIncident._id,
         title: "Issue Resolved",
-        message: `Your report "${updatedIncident.title}" has been marked as Resolved.`,
+        message: `Your report "${updatedIncident.title}" is now Resolved.`,
         type: 'resolved'
       });
 
-      // 2. Notify All Admins
-      const admins = await User.find({ role: 'admin' });
-      const adminNotifs = admins.map(admin => ({
-        userId: admin._id,
-        incidentId: updatedIncident._id,
-        title: "Incident Resolved",
-        // --- FIX IS HERE: Cast to 'any' to read the populated 'name' ---
-        message: `The issue "${updatedIncident.title}" reported by ${(updatedIncident.reportedBy as any).name} is now Resolved.`,
-        type: 'resolved'
-      }));
-      
-      if (adminNotifs.length > 0) {
-        await Notification.insertMany(adminNotifs);
+      // B. Notify Assigned Technician (Optional but good for closure)
+      if (updatedIncident.assignedTo) {
+        notifications.push({
+          userId: (updatedIncident.assignedTo as any)._id,
+          incidentId: updatedIncident._id,
+          title: "Ticket Closed",
+          message: `Ticket "${updatedIncident.title}" marked resolved.`,
+          type: 'info'
+        });
       }
+
+      // C. Notify ADMINS
+      admins.forEach(admin => {
+        notifications.push({
+          userId: admin._id,
+          incidentId: updatedIncident._id,
+          title: "Incident Resolved",
+          message: `Ticket "${updatedIncident.title}" is now Resolved.`,
+          type: 'resolved'
+        });
+      });
+      
+      await Notification.insertMany(notifications);
     }
-    // ---------------------
 
     return NextResponse.json({ success: true, incident: updatedIncident });
 

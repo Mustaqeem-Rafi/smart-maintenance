@@ -2,40 +2,34 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, Wrench, ChevronDown, FileText } from 'lucide-react';
+import { CheckCircle, Wrench, ChevronDown, FileText, Clock, AlertCircle } from 'lucide-react';
 
-// Helper: Calculates the progress bar state
-const getProgressSteps = (status: string, date: string) => {
+// Helper: Map DB Status to Timeline Steps
+const getProgressSteps = (status: string, dateStr: string) => {
+  const date = new Date(dateStr).toLocaleDateString();
+  
   const steps = [
-    { step: "Reported", date: new Date(date).toLocaleDateString(), completed: true },
-    { step: "Technician Assigned", date: "Pending", completed: false },
-    { step: "Work in Progress", date: "Pending", completed: false },
+    { step: "Reported", date: date, completed: true },
+    { step: "In Progress", date: "Pending", completed: false },
     { step: "Resolved", date: "Pending", completed: false },
   ];
 
-  let currentStep = 0;
+  let currentStep = 0; // 0 = Reported
 
   if (status === 'In Progress') {
+    currentStep = 1;
+    steps[1].completed = true;
+    steps[1].date = "Active";
+  } else if (status === 'Resolved') {
     currentStep = 2;
     steps[1].completed = true;
-    steps[1].date = "Done"; 
     steps[2].completed = true;
-    steps[2].date = "Active";
-  } else if (status === 'Resolved' || status === 'Closed') {
-    currentStep = 3;
-    steps[1].completed = true;
-    steps[2].completed = true;
-    steps[3].completed = true;
-    steps[3].date = "Completed";
-  } else {
-    // Pending
-    currentStep = 1; 
-  }
+    steps[2].date = "Completed";
+  } 
 
   return { steps, currentStep };
 };
 
-// --- CRITICAL: This must be 'export default' ---
 export default function ClientHistoryList({ complaints }: { complaints: any[] }) {
   if (!complaints || complaints.length === 0) {
     return (
@@ -64,8 +58,10 @@ export default function ClientHistoryList({ complaints }: { complaints: any[] })
 
 function HistoryCard({ data, index }: { data: any, index: number }) {
   const [isOpen, setIsOpen] = useState(false);
-  const { steps, currentStep } = getProgressSteps(data.status, data.dateSubmitted);
-  const isResolved = data.status === 'Resolved' || data.status === 'Closed';
+  
+  // Note: Using 'createdAt' from Incident model instead of 'dateSubmitted'
+  const { steps, currentStep } = getProgressSteps(data.status, data.createdAt);
+  const isResolved = data.status === 'Resolved';
   
   return (
     <motion.div
@@ -97,9 +93,8 @@ function HistoryCard({ data, index }: { data: any, index: number }) {
             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
                isResolved ? 'bg-green-50 text-green-700 border border-green-200' : 
                data.status === 'In Progress' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-               'bg-amber-50 text-amber-700 border border-amber-200'
+               'bg-orange-50 text-orange-700 border border-orange-200'
             }`}>
-              {/* Pulsing Dot Animation */}
               {!isResolved && (
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-current"></span>
@@ -108,7 +103,9 @@ function HistoryCard({ data, index }: { data: any, index: number }) {
               )}
               {data.status}
             </span>
-            <p className="text-xs text-slate-400 mt-1.5 font-medium">{new Date(data.dateSubmitted).toLocaleDateString()}</p>
+            <p className="text-xs text-slate-400 mt-1.5 font-medium">
+              {new Date(data.createdAt).toLocaleDateString()}
+            </p>
           </div>
           <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>
             <ChevronDown className="text-slate-300" />
@@ -116,27 +113,24 @@ function HistoryCard({ data, index }: { data: any, index: number }) {
         </div>
       </div>
 
-      {/* Tracker Section (Hidden by default) */}
+      {/* Tracker Section */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
             className="bg-slate-50/50 border-t border-slate-100"
           >
             <div className="p-8">
               {/* Timeline Bar */}
-              <div className="relative mb-8">
-                <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-200 rounded-full -translate-y-1/2 z-0"></div>
-                
-                {/* Animated Progress Line */}
+              <div className="relative mb-8 px-4">
+                <div className="absolute top-2.5 left-0 w-full h-1 bg-gray-200 rounded-full z-0"></div>
                 <motion.div 
                   initial={{ width: 0 }}
-                  animate={{ width: `${(currentStep / 3) * 100}%` }}
+                  animate={{ width: `${(currentStep / 2) * 100}%` }}
                   transition={{ duration: 1, delay: 0.2 }}
-                  className={`absolute top-1/2 left-0 h-1 rounded-full -translate-y-1/2 z-0 ${isResolved ? 'bg-green-500' : 'bg-blue-600'}`}
+                  className={`absolute top-2.5 left-0 h-1 rounded-full z-0 ${isResolved ? 'bg-green-500' : 'bg-blue-600'}`}
                 />
 
                 <div className="relative z-10 flex justify-between w-full">
@@ -148,16 +142,15 @@ function HistoryCard({ data, index }: { data: any, index: number }) {
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
                           transition={{ delay: 0.2 + (i * 0.1) }}
-                          className={`w-8 h-8 rounded-full flex items-center justify-center border-4 bg-white transition-colors duration-500 ${
+                          className={`w-6 h-6 rounded-full border-4 bg-white transition-colors duration-500 ${
                             isCompleted 
-                              ? (isResolved ? 'border-green-500 text-green-500' : 'border-blue-600 text-blue-600') 
-                              : 'border-gray-300 text-gray-300'
+                              ? (isResolved ? 'border-green-500' : 'border-blue-600') 
+                              : 'border-gray-300'
                           }`}
-                        >
-                          {isCompleted && <div className={`w-2.5 h-2.5 rounded-full ${isResolved ? 'bg-green-500' : 'bg-blue-600'}`} />}
-                        </motion.div>
-                        <div className="mt-4 text-center w-24">
+                        />
+                        <div className="mt-3 text-center w-24">
                           <p className={`text-xs font-bold ${isCompleted ? 'text-slate-800' : 'text-slate-400'}`}>{s.step}</p>
+                          <p className="text-[10px] text-slate-400 font-medium mt-0.5">{s.date}</p>
                         </div>
                       </div>
                     );
@@ -172,12 +165,14 @@ function HistoryCard({ data, index }: { data: any, index: number }) {
                     <p className="text-slate-700 font-medium">{data.category}</p>
                  </div>
                  <div>
-                    <span className="text-xs uppercase text-slate-400 font-bold tracking-wider">Technician</span>
-                    <p className="text-slate-700 font-medium">{data.assignedTo ? "Assigned" : "Pending Assignment"}</p>
+                    <span className="text-xs uppercase text-slate-400 font-bold tracking-wider">Priority</span>
+                    <p className="text-slate-700 font-medium">{data.priority}</p>
                  </div>
                  <div>
                     <span className="text-xs uppercase text-slate-400 font-bold tracking-wider">Complaint ID</span>
-                    <p className="text-slate-700 font-medium font-mono text-xs mt-1">{data._id}</p>
+                    <p className="text-slate-700 font-medium font-mono text-xs mt-1">
+                      {data._id ? data._id.slice(-6).toUpperCase() : '---'}
+                    </p>
                  </div>
               </div>
             </div>

@@ -18,8 +18,8 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const notifications = await Notification.find({ userId: user._id })
-      .sort({ createdAt: -1 }) // Newest first
-      .limit(20); // Limit to last 20
+      .sort({ createdAt: -1 })
+      .limit(20);
 
     return NextResponse.json({ notifications });
   } catch (error: any) {

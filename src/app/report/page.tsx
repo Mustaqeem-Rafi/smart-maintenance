@@ -1,192 +1,115 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation'; // 1. Import useRouter
-import { MapPin, Loader2, Camera, AlertTriangle } from 'lucide-react';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
+import { 
+  Droplet, Zap, Wifi, Wrench, TriangleAlert, 
+  HelpCircle, ChevronRight, Loader2, ArrowLeft 
+} from "lucide-react";
 
-export default function ReportIncident() {
-  const router = useRouter(); // 2. Initialize router
+const CATEGORIES = [
+  { id: "Water", label: "Water & Plumbing", desc: "Leaks, floods, clogged drains", icon: Droplet },
+  { id: "Electricity", label: "Electrical & Lighting", desc: "Power outages, flickering lights", icon: Zap },
+  { id: "Internet", label: "IT & Wi-Fi", desc: "No connection, slow network", icon: Wifi },
+  { id: "Civil", label: "Civil / Furniture", desc: "Broken chairs, doors, windows", icon: Wrench },
+  { id: "Other", label: "Other / General", desc: "Any other maintenance issues", icon: HelpCircle },
+];
+
+export default function SelectCategoryPage() {
+  const router = useRouter();
+  const { data: session } = useSession();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [locationStatus, setLocationStatus] = useState('idle'); 
-  
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    category: 'Water',
-    latitude: 0,
-    longitude: 0,
-    imageUrl: '' 
-  });
 
-  const getLocation = () => {
-    setLocationStatus('finding');
-    if (!navigator.geolocation) {
-      setLocationStatus('error');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setFormData(prev => ({
-          ...prev,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        }));
-        setLocationStatus('success');
-      },
-      () => setLocationStatus('error')
-    );
+  // Dynamic Back Link based on Role
+  const getBackLink = () => {
+    const role = (session?.user as any)?.role;
+    if (role === 'admin') return '/admin';
+    if (role === 'technician') return '/staff/dashboard';
+    return '/student/dashboard';
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleNext = () => {
+    if (!selectedCategory) return;
     setLoading(true);
-
-    try {
-      const payload = {
-        title: formData.title,
-        description: formData.description,
-        category: formData.category,
-        images: formData.imageUrl ? [formData.imageUrl] : [],
-        location: {
-          type: "Point",
-          coordinates: [formData.longitude, formData.latitude] 
-        }
-      };
-
-      const res = await fetch('/api/incidents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        const data = await res.json(); // 3. Get response data
-        
-        // 4. Construct Success URL Params
-        const params = new URLSearchParams({
-          refId: data.incident._id,
-          type: formData.category,
-          location: formData.latitude !== 0 
-            ? `GPS: ${formData.latitude.toFixed(4)}, ${formData.longitude.toFixed(4)}` 
-            : "Location not shared"
-        });
-
-        // 5. Redirect instead of Alert
-        router.push(`/staff/report/success?${params.toString()}`);
-        
-      } else {
-        const err = await res.json();
-        alert('Error: ' + err.error);
-      }
-    } catch (error) {
-      alert('Something went wrong.');
-    } finally {
-      setLoading(false);
-    }
+    router.push(`/report/details?category=${selectedCategory}`);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 flex justify-center items-center font-sans">
-      <div className="w-full max-w-lg bg-white rounded-xl shadow-lg p-8 border border-gray-100">
+    <div className="min-h-screen bg-gray-50 p-6 flex justify-center font-sans">
+      <div className="max-w-5xl w-full">
         
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Report an Incident</h1>
-          <p className="text-gray-500 text-sm mt-2">Spot an issue? Let us know immediately.</p>
+        {/* Header */}
+        <div className="mb-8">
+          <Link href={getBackLink()} className="text-sm text-gray-500 hover:text-blue-600 flex items-center gap-2 mb-4 transition w-fit">
+            <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+          </Link>
+          <h1 className="text-3xl font-black tracking-tight text-gray-900 mb-2">
+            Report a New Incident
+          </h1>
+          <p className="text-gray-500 text-lg">
+            What is the nature of the problem? Select a category to proceed.
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Issue Title</label>
-            <input 
-              type="text" 
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-              placeholder="e.g., Leaking Pipe in Hall A"
-              value={formData.title}
-              onChange={(e) => setFormData({...formData, title: e.target.value})}
-            />
-          </div>
-
-          {/* Category */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <select 
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-              value={formData.category}
-              onChange={(e) => setFormData({...formData, category: e.target.value})}
-            >
-              <option value="Water">Water Supply</option>
-              <option value="Electricity">Electricity</option>
-              <option value="Internet">Internet / Wi-Fi</option>
-              <option value="Civil">Civil / Furniture</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-
-          {/* Location (GPS) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-            <div className="flex gap-2">
-              <button 
-                type="button"
-                onClick={getLocation}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-dashed transition ${
-                  locationStatus === 'success' 
-                    ? 'border-green-500 text-green-700 bg-green-50' 
-                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+        {/* Categories Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+          {CATEGORIES.map((cat) => {
+            const isSelected = selectedCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`group relative flex flex-col text-left p-6 rounded-2xl border-2 transition-all duration-200 outline-none ${
+                  isSelected
+                    ? "border-blue-600 bg-blue-50 shadow-md ring-1 ring-blue-600"
+                    : "border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm"
                 }`}
               >
-                {locationStatus === 'finding' ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-                {locationStatus === 'success' ? 'Location Locked' : 'Auto-Detect Location'}
+                <div className={`mb-4 p-3 rounded-xl w-fit ${isSelected ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 group-hover:bg-blue-100 group-hover:text-blue-600"}`}>
+                  <cat.icon className="w-6 h-6" strokeWidth={2} />
+                </div>
+                <h3 className={`font-bold text-lg mb-1 ${isSelected ? "text-blue-900" : "text-gray-900"}`}>
+                  {cat.label}
+                </h3>
+                <p className={`text-sm ${isSelected ? "text-blue-700" : "text-gray-500"}`}>
+                  {cat.desc}
+                </p>
+                
+                {isSelected && (
+                  <div className="absolute top-4 right-4 text-blue-600">
+                    <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center">
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                  </div>
+                )}
               </button>
-            </div>
-            {locationStatus === 'success' && (
-              <p className="text-xs text-green-600 mt-1 text-center">
-                Lat: {formData.latitude.toFixed(4)}, Long: {formData.longitude.toFixed(4)}
-              </p>
-            )}
-          </div>
+            );
+          })}
+        </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea 
-              required
-              rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              placeholder="Describe the issue in detail..."
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
-            />
-          </div>
-
-           {/* Image URL */}
-           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Image URL (Optional)</label>
-            <div className="relative">
-              <Camera className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-              <input 
-                type="text" 
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Paste image link here..."
-                value={formData.imageUrl}
-                onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
-              />
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-70"
+        {/* Footer */}
+        <div className="flex justify-end items-center gap-4 pt-6 border-t border-gray-200">
+          <Link href={getBackLink()}>
+            <button className="px-6 py-3 rounded-xl bg-white border border-gray-200 text-gray-700 font-bold hover:bg-gray-50 transition">
+              Cancel
+            </button>
+          </Link>
+          <button
+            onClick={handleNext}
+            disabled={!selectedCategory || loading}
+            className="px-8 py-3 rounded-xl bg-blue-600 text-white font-bold text-base hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            {loading ? 'Submitting...' : 'Report Incident'}
+            {loading ? (
+              <> <Loader2 className="w-5 h-5 animate-spin" /> Processing... </>
+            ) : (
+              <> Next Step <ChevronRight className="w-5 h-5" /> </>
+            )}
           </button>
+        </div>
 
-        </form>
       </div>
     </div>
   );

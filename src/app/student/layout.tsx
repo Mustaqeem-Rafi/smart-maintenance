@@ -1,60 +1,64 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { 
   LayoutDashboard, 
-  FileText, 
+  PlusCircle, 
+  History, 
   User, 
-  LogOut, 
-  PlusCircle 
+  LogOut 
 } from "lucide-react";
-import { signOut } from "next-auth/react";
 
-export default function StudentLayout({ children }: { children: React.ReactNode }) {
-  
+export default function StudentLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+
   const navItems = [
-    { label: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
-    { label: "Report Issue", href: "/report", icon: PlusCircle },
-    { label: "History", href: "/student/history", icon: FileText },
-    { label: "Profile", href: "/student/profile", icon: User },
+    { name: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
+    { name: "Report Issue", href: "/student/report", icon: PlusCircle },
+    { name: "History", href: "/student/history", icon: History },
+    { name: "Profile", href: "/student/profile", icon: User },
   ];
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      
-      {/* Sidebar Navigation */}
-      <aside className="w-64 bg-blue-800 text-white flex flex-col p-4 shadow-xl fixed h-full">
-        <div className="p-2 border-b border-blue-600 mb-8">
-          <h1 className="text-2xl font-bold">Smart Maint.</h1>
-          <p className="text-blue-200 text-xs">Student Portal</p>
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar - Fixed on the left */}
+      <aside className="w-64 bg-blue-700 text-white p-6 flex flex-col justify-between sticky top-0 h-screen">
+        <div>
+          <h1 className="text-2xl font-bold mb-1">Smart Maint.</h1>
+          <p className="text-blue-200 text-xs mb-8">Student Portal</p>
+          
+          <nav className="space-y-4">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              return (
+                <Link 
+                  key={item.name} 
+                  href={item.href} 
+                  className={`flex items-center gap-3 p-3 rounded-xl transition ${
+                    isActive ? "bg-blue-800 shadow-inner" : "hover:bg-blue-600"
+                  }`}
+                >
+                  <Icon size={20} /> {item.name}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
         
-        <nav className="grow space-y-2">
-          {navItems.map((item) => (
-            <Link 
-              key={item.href} 
-              href={item.href} 
-              className="flex items-center gap-3 p-3 rounded-lg text-sm font-medium hover:bg-blue-700 transition duration-150"
-            >
-              <item.icon className="w-5 h-5" />
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        
-        {/* Logout Button */}
-        <button 
-          onClick={() => signOut({ callbackUrl: '/login' })}
-          className="flex items-center gap-3 p-3 rounded-lg text-sm font-medium text-red-200 hover:bg-blue-700 hover:text-white transition duration-150 mt-auto"
-        >
-          <LogOut className="w-5 h-5" />
-          Logout
+        <button className="flex items-center gap-3 text-blue-200 hover:text-white transition mt-auto">
+          <LogOut size={20} /> Logout
         </button>
       </aside>
 
-      {/* Main Content Wrapper (Added margin-left to account for fixed sidebar) */}
-      <main className="flex-1 ml-64 p-8 overflow-y-auto">
-        {children} 
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-y-auto">
+        {children}
       </main>
     </div>
   );

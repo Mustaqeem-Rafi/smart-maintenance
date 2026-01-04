@@ -112,40 +112,39 @@ export async function POST(req: Request) {
       images,
       priority: autoPriority,
       reportedBy: reporter._id, 
-      assignedTo: null, // <--- JOB POOL: Null means "Up for grabs"
-      status: 'Open',   // <--- JOB POOL: Open status
-      createdAt: new Date(),
-      history: [{ action: 'Created', by: reporter._id, date: new Date() }]
+      status: 'Open',
+      createdAt: new Date()
     });
 
-    // --- 6. NOTIFICATIONS (To Admins) ---
-    // (Optional: You could also notify Technicians here via Department Map if you have a Notification model setup)
-    try {
-        const admins = await User.find({ role: 'admin' });
-        const notifications = admins.map(admin => ({
-            userId: admin._id,
-            incidentId: newIncident._id,
-            title: "New Incident Reported",
-            message: `${reporter.name} reported: "${title}" (${category}). Priority: ${autoPriority}`,
-            type: 'info',
-            createdAt: new Date()
-        }));
-        
-        if (notifications.length > 0) {
-            await Notification.insertMany(notifications);
-        }
-    } catch (err) {
-        console.error("Notification Error (Non-blocking):", err);
-    }
+    // --- NOTIFICATIONS ---
+    const notifications = [];
 
-    return NextResponse.json({ 
-        message: "Incident Reported! Sent to Department Pool.", 
-        priority: autoPriority, 
-        incident: newIncident 
-    }, { status: 201 });
+    // A. Notify the Reporter (Student or Staff) ONLY
+    notifications.push({
+      userId: reporter._id,  
+      incidentId: newIncident._id,
+      title: "Report Submitted",
+      message: `We have received your report: "${title}".`,
+      type: 'info'
+    });
+
+    // B. Notify ADMINS
+    const admins = await User.find({ role: 'admin' });
+    admins.forEach(admin => {
+      notifications.push({
+        userId: admin._id,
+        incidentId: newIncident._id,
+        title: "New Incident Reported",
+        message: `${reporter.name} reported: "${title}" (${category}).`,
+        type: 'info'
+      });
+    });
+
+    await Notification.insertMany(notifications);
+
+    return NextResponse.json({ message: "Reported successfully", incident: newIncident }, { status: 201 });
 
   } catch (error: any) {
-    console.error("API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
