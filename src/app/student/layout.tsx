@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Toaster } from "sonner";
 import { 
   LayoutDashboard, 
   PlusCircle, 
   History, 
   User, 
-  LogOut 
+  LogOut,
+  Trophy // Make sure to import Trophy for the leaderboard
 } from "lucide-react";
 
 export default function StudentLayout({
@@ -20,17 +22,20 @@ export default function StudentLayout({
   const navItems = [
     { name: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
     { name: "Report Issue", href: "/student/report", icon: PlusCircle },
+    { name: "Leaderboard", href: "/student/leaderboard", icon: Trophy },
     { name: "History", href: "/student/history", icon: History },
     { name: "Profile", href: "/student/profile", icon: User },
   ];
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar - Fixed on the left */}
-      <aside className="w-64 bg-blue-700 text-white p-6 flex flex-col justify-between sticky top-0 h-screen">
+    <div className="flex min-h-screen bg-slate-50">
+      <Toaster position="top-right" richColors closeButton />
+
+      {/* Sidebar */}
+      <aside className="w-64 bg-blue-700 text-white p-6 flex flex-col justify-between sticky top-0 h-screen shadow-xl z-20">
         <div>
           <h1 className="text-2xl font-bold mb-1">Smart Maint.</h1>
-          <p className="text-blue-200 text-xs mb-8">Student Portal</p>
+          <p className="text-blue-200 text-xs mb-8 uppercase tracking-widest text-[10px]">Student Portal</p>
           
           <nav className="space-y-4">
             {navItems.map((item) => {
@@ -40,7 +45,7 @@ export default function StudentLayout({
                 <Link 
                   key={item.name} 
                   href={item.href} 
-                  className={`flex items-center gap-3 p-3 rounded-xl transition ${
+                  className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
                     isActive ? "bg-blue-800 shadow-inner" : "hover:bg-blue-600"
                   }`}
                 >
@@ -51,12 +56,11 @@ export default function StudentLayout({
           </nav>
         </div>
         
-        <button className="flex items-center gap-3 text-blue-200 hover:text-white transition mt-auto">
+        <button className="flex items-center gap-3 text-blue-200 hover:text-white transition-colors mt-auto font-medium">
           <LogOut size={20} /> Logout
         </button>
       </aside>
 
-      {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto">
         {children}
       </main>
